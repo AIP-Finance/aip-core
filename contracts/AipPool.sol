@@ -33,16 +33,14 @@ contract AipPool is IAipPool, ReentrancyGuard {
 
     uint256 private _nextPlanIndex = 1;
     uint256 private _nextTickIndex = 1;
-    uint256 private _nextRewardCycleIndex = 1;
     uint256 public override protocolFee;
     uint256 public override totalPaymentAmount0;
     mapping(uint256 => uint256) private _tickVolumes0;
     mapping(uint256 => uint256) private _tickVolumes1;
     mapping(uint256 => uint256) private _tickFees0;
     mapping(uint256 => uint256) private _tickTimes;
+    mapping(uint256 => uint256) private _tickRewards;
     mapping(uint256 => PlanInfo) public override plans;
-    mapping(uint256 => RewardCycleInfo) public override rewardCycles;
-    mapping(uint256 => uint256) private _tickCycles;
 
     constructor() {
         (
@@ -163,16 +161,6 @@ contract AipPool is IAipPool, ReentrancyGuard {
         amount1 = _tickVolumes1[tick];
         fee0 = _tickFees0[tick];
         time = _tickTimes[tick];
-    }
-
-    function lastRewardCycle()
-        public
-        view
-        override
-        returns (uint256 index, RewardCycleInfo memory rewardCycle)
-    {
-        index = _nextRewardCycleIndex - 1;
-        rewardCycle = rewardCycles[index];
     }
 
     function getPlanStatistics(uint256 planIndex)
@@ -443,12 +431,11 @@ contract AipPool is IAipPool, ReentrancyGuard {
                 : plan.claimedRewardIndex + 1;
             if (currentEndTick >= currentStartTick) {
                 for (uint256 i = currentStartTick; i <= currentEndTick; i++) {
-                    RewardCycleInfo memory rewardCycle = rewardCycles[
-                        _tickCycles[i]
-                    ];
+                    uint256 rewardAmount = _tickRewards[i];
+                    uint256 paymentAmount0 = _tickVolumes0[i];
                     unclaimedAmount +=
-                        (rewardCycle.rewardAmount * plan.tickAmount0) /
-                        rewardCycle.paymentAmount0;
+                        (rewardAmount * plan.tickAmount0) /
+                        paymentAmount0;
                 }
             }
 
@@ -478,24 +465,7 @@ contract AipPool is IAipPool, ReentrancyGuard {
         nonReentrant
         onlyRewardOperator
     {
-        uint256 rewardCycleIndex = _nextRewardCycleIndex++;
-        RewardCycleInfo storage rewardCycle = rewardCycles[rewardCycleIndex];
-        RewardCycleInfo memory _lastRewardCycle = rewardCycles[
-            rewardCycleIndex - 1
-        ];
-        rewardCycle.rewardAmount = amount;
-        rewardCycle.paymentAmount0 =
-            totalPaymentAmount0 -
-            _lastRewardCycle.paymentAmount0;
-        rewardCycle.tickIndexStart = _lastRewardCycle.tickIndexEnd + 1;
-        rewardCycle.tickIndexEnd = _nextTickIndex - 1;
-        for (
-            uint256 i = rewardCycle.tickIndexStart;
-            i <= rewardCycle.tickIndexEnd;
-            i++
-        ) {
-            _tickCycles[i] = rewardCycleIndex;
-        }
+        _tickRewards[_nextTickIndex - 1] += amount;
         uint256 balanceRewardBefore = balanceReward();
         TransferHelper.safeTransferFrom(
             rewardToken,

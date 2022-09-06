@@ -55,13 +55,6 @@ interface IAipPool {
         uint256 claimedRewardAmount;
     }
 
-    struct RewardCycleInfo {
-        uint256 tickIndexStart;
-        uint256 tickIndexEnd;
-        uint256 rewardAmount;
-        uint256 paymentAmount0;
-    }
-
     function factory() external view returns (address);
 
     function swapManager() external view returns (address);
@@ -102,16 +95,6 @@ interface IAipPool {
             uint256 claimedRewardAmount
         );
 
-    function rewardCycles(uint256)
-        external
-        view
-        returns (
-            uint256 tickIndexStart,
-            uint256 tickIndexEnd,
-            uint256 rewardAmount,
-            uint256 paymentAmount0
-        );
-
     function price() external view returns (uint256);
 
     function lastTrigger() external view returns (uint256 tick, uint256 time);
@@ -130,11 +113,6 @@ interface IAipPool {
             uint256 fee0,
             uint256 time
         );
-
-    function lastRewardCycle()
-        external
-        view
-        returns (uint256 index, RewardCycleInfo memory rewardCycle);
 
     function getPlanStatistics(uint256 planIndex)
         external
