@@ -3,7 +3,7 @@ const { splitSignature } = require("ethers/lib/utils");
 
 async function getPermitNFTSignature(
   wallet,
-  coverageManager,
+  planManager,
   spender,
   tokenId,
   deadline = constants.MaxUint256,
@@ -11,8 +11,8 @@ async function getPermitNFTSignature(
 ) {
   const [nonce, name, version, chainId] = await Promise.all([
     permitConfig?.nonce ??
-      coverageManager.coverages(tokenId).then((p) => p.nonce),
-    permitConfig?.name ?? coverageManager.name(),
+      planManager.getPlan(tokenId).then((p) => p.plan.nonce),
+    permitConfig?.name ?? planManager.name(),
     permitConfig?.version ?? "1",
     permitConfig?.chainId ?? wallet.getChainId(),
   ]);
@@ -23,7 +23,7 @@ async function getPermitNFTSignature(
         name,
         version,
         chainId,
-        verifyingContract: coverageManager.address,
+        verifyingContract: planManager.address,
       },
       {
         Permit: [

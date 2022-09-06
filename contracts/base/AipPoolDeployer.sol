@@ -10,6 +10,7 @@ contract AipPoolDeployer is IAipPoolDeployer {
     struct Parameters {
         address factory;
         address swapManager;
+        address planManager;
         address WETH9;
         address token0;
         address token1;
@@ -21,6 +22,7 @@ contract AipPoolDeployer is IAipPoolDeployer {
     function deploy(
         address factory,
         address swapManager,
+        address planManager,
         address WETH9,
         address token0,
         address token1,
@@ -29,6 +31,7 @@ contract AipPoolDeployer is IAipPoolDeployer {
         parameters = Parameters({
             factory: factory,
             swapManager: swapManager,
+            planManager: planManager,
             WETH9: WETH9,
             token0: token0,
             token1: token1,

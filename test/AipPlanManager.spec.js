@@ -10,6 +10,7 @@ const { getCreate2Address } = require("./utils/helpers");
 const { generateUniswapPool, FeeAmount } = require("./utils/uniswapHelpers");
 const { completeFixture } = require("./utils/fixtures");
 const { TIME_UNIT, PROCESSING_GAS } = require("./utils/constants");
+const getPermitNFTSignature = require("./utils/getPermitNFTSignature");
 
 let wallet, investor1, investor2, other;
 let weth9;
@@ -32,7 +33,8 @@ const tickAmount = utils.parseEther(tickAmount0.toString());
 const subscribe = (investor, tickAmount, periods) =>
   planManager
     .connect(investor)
-    .subscribe([
+    .mint([
+      investor.address,
       usdt.address,
       tokens[1].address,
       frequency,
@@ -68,7 +70,7 @@ const swapWithoutProtocolFee = async (amount) => {
     );
 };
 
-describe("AipPlanManager", () => {
+describe("NonfungiblePlanManager", () => {
   const createFixtureLoader = waffle.createFixtureLoader;
 
   const fixture = async (wallets, provider) => {
@@ -87,6 +89,7 @@ describe("AipPlanManager", () => {
 
     await factory.enable(
       swapManager.address,
+      planManager.address,
       dai.address,
       usdc.address,
       usdt.address,
@@ -302,7 +305,7 @@ describe("AipPlanManager", () => {
     });
   });
 
-  describe("#subscribe", () => {
+  describe("#mint", () => {
     it("success", async () => {
       const balance0Before = await usdt.balanceOf(investor1.address);
       await subscribe(investor1, tickAmount, ticks);
@@ -325,6 +328,9 @@ describe("AipPlanManager", () => {
       expect(planDetails.plan.index).equal(poolPlan.index.toNumber());
       expect(planDetails.plan.tickAmount).equal(tickAmount);
 
+      const tokenOwner = await planManager.ownerOf(1);
+      expect(tokenOwner).to.eq(investor1.address);
+
       const tickInfo1 = await pool.tickInfo(1);
       const tickInfo2 = await pool.tickInfo(2);
       const tickInfo3 = await pool.tickInfo(3);
@@ -333,6 +339,21 @@ describe("AipPlanManager", () => {
       expect(tickInfo2.amount0).to.equal(tickAmount);
       expect(tickInfo3.amount0).to.equal(tickAmount);
       expect(tickInfo4.amount0).to.equal(0);
+    });
+
+    it("success with another payer", async () => {
+      await planManager
+        .connect(investor2)
+        .mint([
+          investor1.address,
+          usdt.address,
+          tokens[1].address,
+          frequency,
+          tickAmount,
+          3,
+        ]);
+      const planDetails = await planManager.getPlan(1);
+      expect(planDetails.plan.investor).equal(investor1.address);
     });
 
     it("emits event", async () => {
@@ -465,14 +486,18 @@ describe("AipPlanManager", () => {
     });
   });
 
-  describe("#unsubscribe", () => {
+  describe("#burn", () => {
     it("success", async () => {
       await subscribe(investor1, tickAmount, ticks);
       const result = await swapWithoutProtocolFee(tickAmount);
       await pool.trigger();
       const balance0Before = await usdt.balanceOf(investor1.address);
       const balance1Before = await tokens[1].balanceOf(investor1.address);
-      await planManager.connect(investor1).unsubscribe(1);
+      await planManager.connect(investor1).burn(1);
+
+      await expect(planManager.ownerOf(1)).to.be.revertedWith(
+        "ERC721: owner query for nonexistent token"
+      );
 
       const plan = await pool.plans(1);
       const balance0 = await usdt.balanceOf(investor1.address);
@@ -488,12 +513,32 @@ describe("AipPlanManager", () => {
       expect(tickInfo2.amount0).to.equal(0);
       expect(tickInfo3.amount0).to.equal(0);
     });
+    it("success when transfered NFT to another", async () => {
+      await subscribe(investor1, tickAmount, ticks);
+      const result = await swapWithoutProtocolFee(tickAmount);
+      await pool.trigger();
+      const balance0Before = await usdt.balanceOf(investor2.address);
+      const balance1Before = await tokens[1].balanceOf(investor2.address);
+
+      await planManager
+        .connect(investor1)
+        .transferFrom(investor1.address, investor2.address, 1);
+
+      await planManager.connect(investor2).burn(1);
+
+      const plan = await pool.plans(1);
+      const balance0 = await usdt.balanceOf(investor2.address);
+      const balance1 = await tokens[1].balanceOf(investor2.address);
+      expect(balance0.sub(balance0Before)).to.equal(tickAmount.mul(2));
+      expect(balance1.sub(balance1Before)).to.equal(result.amount1.abs());
+      expect(plan.endTick).to.equal(1);
+    });
     it("success if cancel after subscribe", async () => {
       await subscribe(investor2, tickAmount, 5);
       await pool.trigger();
       await subscribe(investor1, tickAmount, ticks);
       const balance0Before = await usdt.balanceOf(investor1.address);
-      await planManager.connect(investor1).unsubscribe(2);
+      await planManager.connect(investor1).burn(2);
       const balance0 = await usdt.balanceOf(investor1.address);
       expect(balance0.sub(balance0Before)).to.equal(tickAmount.mul(ticks));
       await ethers.provider.send("evm_increaseTime", [frequency * TIME_UNIT]);
@@ -511,28 +556,24 @@ describe("AipPlanManager", () => {
       await subscribe(investor1, tickAmount, ticks);
       const result = await swapWithoutProtocolFee(tickAmount);
       await pool.trigger();
-      await expect(planManager.connect(investor1).unsubscribe(1))
+      await expect(planManager.connect(investor1).burn(1))
         .to.be.emit(pool, "Unsubscribe")
         .withArgs(1, tickAmount.mul(2), result.amount1.abs());
     });
-    it("fails if requester is not owner", async () => {
+    it("fails if requester is not approved", async () => {
       await subscribe(investor1, tickAmount, ticks);
-      await expect(
-        planManager.connect(investor2).unsubscribe(1)
-      ).to.be.revertedWith("Only owner");
+      await expect(planManager.connect(investor2).burn(1)).to.be.revertedWith(
+        "Not approved"
+      );
     });
-    it("fails if request time larger than plan end time", async () => {
+    it("fails if NFT transfered", async () => {
       await subscribe(investor1, tickAmount, ticks);
-      await pool.trigger();
-      await ethers.provider.send("evm_increaseTime", [frequency * TIME_UNIT]);
-      await ethers.provider.send("evm_mine");
-      await pool.trigger();
-      await ethers.provider.send("evm_increaseTime", [frequency * TIME_UNIT]);
-      await ethers.provider.send("evm_mine");
-      await pool.trigger();
-      await expect(
-        planManager.connect(investor1).unsubscribe(1)
-      ).to.be.revertedWith("Finished");
+      await planManager
+        .connect(investor1)
+        .transferFrom(investor1.address, investor2.address, 1);
+      await expect(planManager.connect(investor1).burn(1)).to.be.revertedWith(
+        "Not approved"
+      );
     });
   });
 
@@ -597,18 +638,22 @@ describe("AipPlanManager", () => {
         .to.be.emit(pool, "Claim")
         .withArgs(1, result.amount1.abs());
     });
-    it("fails if requester is not owner", async () => {
-      await subscribe(investor1, tickAmount, ticks);
-      await expect(planManager.connect(investor2).claim(1)).to.be.revertedWith(
-        "Only owner"
-      );
-    });
     it("fails if nothing to claim", async () => {
       await subscribe(investor1, tickAmount, ticks);
       await pool.trigger();
       await planManager.connect(investor1).claim(1);
       await expect(planManager.connect(investor1).claim(1)).to.be.revertedWith(
         "Nothing to claim"
+      );
+    });
+    it("fails if investor is not NFT owner", async () => {
+      await subscribe(investor1, tickAmount, ticks);
+      await pool.trigger();
+      await planManager
+        .connect(investor1)
+        .transferFrom(investor1.address, investor2.address, 1);
+      await expect(planManager.connect(investor1).claim(1)).to.be.revertedWith(
+        "Locked"
       );
     });
   });
@@ -635,6 +680,10 @@ describe("AipPlanManager", () => {
       await planManager.connect(investor1).claim(1);
       const balance1 = await tokens[1].balanceOf(investor1.address);
       expect(balance1.sub(balance1Before)).to.equal(received);
+    });
+    it("success with another payer", async () => {
+      await subscribe(investor1, tickAmount, 2);
+      await planManager.connect(investor2).extend(1, 1);
     });
     it("right ratio", async () => {
       const tickAmountI1 = tickAmount;
@@ -710,12 +759,6 @@ describe("AipPlanManager", () => {
       await expect(
         planManager.connect(investor1).extend(1, 1)
       ).to.be.revertedWith("Finished");
-    });
-    it("fails if requester is not owner", async () => {
-      await subscribe(investor1, tickAmount, ticks);
-      await expect(
-        planManager.connect(investor2).extend(1, 1)
-      ).to.be.revertedWith("Only owner");
     });
   });
   describe("#claimReward", () => {
@@ -811,12 +854,130 @@ describe("AipPlanManager", () => {
       expect(result.unclaimedAmount).to.equal(0);
       expect(result.claimedAmount).to.equal(0);
     });
-    it("fails if requester is not owner", async () => {
+    it("fails if investor is not NFT owner", async () => {
       await subscribe(investor1, tickAmount, ticks);
+      await pool.trigger();
       await pool.initReward(tokens[2].address, other.address);
+      await tokens[2].connect(other).approve(pool.address, rewardAmount);
+      await pool.connect(other).depositReward(rewardAmount);
+      await planManager
+        .connect(investor1)
+        .transferFrom(investor1.address, investor2.address, 1);
       await expect(
-        planManager.connect(investor2).claimReward(1)
-      ).to.be.revertedWith("Only owner");
+        planManager.connect(investor1).claimReward(1)
+      ).to.be.revertedWith("Locked");
+    });
+  });
+
+  describe("#transferFrom", () => {
+    const tokenId = 1;
+    beforeEach("mint a plan", async () => {
+      await subscribe(investor1, tickAmount, ticks);
+    });
+
+    it("can only be called by authorized or owner", async () => {
+      await expect(
+        planManager.transferFrom(investor1.address, investor2.address, tokenId)
+      ).to.be.revertedWith("ERC721: transfer caller is not owner nor approved");
+    });
+
+    it("changes the owner", async () => {
+      await planManager
+        .connect(investor1)
+        .transferFrom(investor1.address, investor2.address, tokenId);
+      expect(await planManager.ownerOf(tokenId)).to.eq(investor2.address);
+    });
+
+    it("removes existing approval", async () => {
+      await planManager.connect(investor1).approve(wallet.address, tokenId);
+      expect(await planManager.getApproved(tokenId)).to.eq(wallet.address);
+      await planManager.transferFrom(
+        investor1.address,
+        wallet.address,
+        tokenId
+      );
+      expect(await planManager.getApproved(tokenId)).to.eq(
+        constants.AddressZero
+      );
+    });
+
+    // it('gas', async () => {
+    //   await snapshotGasCost(nft.connect(other).transferFrom(other.address, wallet.address, tokenId))
+    // })
+
+    // it('gas comes from approved', async () => {
+    //   await nft.connect(other).approve(wallet.address, tokenId)
+    //   await snapshotGasCost(nft.transferFrom(other.address, wallet.address, tokenId))
+    // })
+  });
+
+  describe("#permit", () => {
+    describe("owned by eoa", () => {
+      const tokenId = 1;
+      const deadline = Date.now();
+      beforeEach("mint a plan", async () => {
+        await subscribe(investor1, tickAmount, ticks);
+      });
+
+      it("changes the operator of the coverage and increments the nonce", async () => {
+        const { v, r, s } = await getPermitNFTSignature(
+          investor1,
+          planManager,
+          investor2.address,
+          tokenId,
+          deadline
+        );
+        await planManager.permit(investor2.address, tokenId, deadline, v, r, s);
+        expect((await planManager.getPlan(tokenId)).plan.nonce).to.eq(1);
+        expect((await planManager.getPlan(tokenId)).plan.operator).to.eq(
+          investor2.address
+        );
+      });
+
+      it("cannot be called twice with the same signature", async () => {
+        const { v, r, s } = await getPermitNFTSignature(
+          investor1,
+          planManager,
+          investor2.address,
+          tokenId,
+          deadline
+        );
+        await planManager.permit(investor2.address, tokenId, deadline, v, r, s);
+        await expect(
+          planManager.permit(investor2.address, tokenId, deadline, v, r, s)
+        ).to.be.reverted;
+      });
+
+      it("fails with invalid signature", async () => {
+        const { v, r, s } = await getPermitNFTSignature(
+          investor2,
+          planManager,
+          investor2.address,
+          tokenId,
+          deadline
+        );
+        await expect(
+          planManager.permit(investor2.address, tokenId, deadline, v + 3, r, s)
+        ).to.be.revertedWith("Invalid signature");
+      });
+
+      it("fails with signature not from owner", async () => {
+        const { v, r, s } = await getPermitNFTSignature(
+          investor2,
+          planManager,
+          investor2.address,
+          tokenId,
+          deadline
+        );
+        await expect(
+          planManager.permit(investor2.address, tokenId, deadline, v, r, s)
+        ).to.be.revertedWith("Unauthorized");
+      });
+
+      // it('gas', async () => {
+      //   const { v, r, s } = await getPermitNFTSignature(other, coverageManager, wallet.address, tokenId, 1)
+      //   await snapshotGasCost(coverageManager.permit(wallet.address, tokenId, 1, v, r, s))
+      // })
     });
   });
 });

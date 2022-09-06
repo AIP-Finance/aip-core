@@ -41,7 +41,7 @@ async function main() {
   const data = await pool.callStatic.trigger({ gasLimit: 400000 });
   console.log(data);
 
-  // const tx = await pool.unsubscribe(wallet2.address, 2, { gasLimit: 500000 });
+  // const tx = await pool.burn(wallet2.address, 2, { gasLimit: 500000 });
   // console.log(tx);
 
   // const pool = new ethers.Contract(

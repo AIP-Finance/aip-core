@@ -16,7 +16,7 @@ import "./interfaces/IERC20.sol";
 
 // import "hardhat/console.sol";
 
-contract AipUniswapManager is IAipSwapManager, AipPayments {
+contract UniswapManager is IAipSwapManager, AipPayments {
     using LowGasSafeMath for uint256;
     using SafeCast for uint256;
 

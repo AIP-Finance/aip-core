@@ -14,6 +14,7 @@ interface IAipFactory {
 
     event Enabled(
         address swapManager,
+        address planManager,
         address DAI,
         address USDC,
         address USDT,
@@ -23,6 +24,8 @@ interface IAipFactory {
     function owner() external view returns (address);
 
     function swapManager() external view returns (address);
+
+    function planManager() external view returns (address);
 
     function DAI() external view returns (address);
 
@@ -57,6 +60,7 @@ interface IAipFactory {
 
     function enable(
         address _swapManager,
+        address _planManager,
         address _DAI,
         address _USDC,
         address _USDT,

@@ -4,7 +4,7 @@ const fs = require("fs");
 const { execSync } = require("child_process");
 const {
   abi: planManagerAbi,
-} = require("../artifacts/contracts/AipPlanManager.sol/AipPlanManager.json");
+} = require("../artifacts/contracts/NonfungiblePlanManager.sol/NonfungiblePlanManager.json");
 
 async function deploy() {
   const [wallet, wallet2] = await ethers.getSigners();
@@ -13,9 +13,7 @@ async function deploy() {
   const usdt = hre.network.config.USDT;
   const weth9 = hre.network.config.WETH9;
   const swapFactory = hre.network.config.uniswapFactory;
-  const swapManagerFactory = await ethers.getContractFactory(
-    "AipUniswapManager"
-  );
+  const swapManagerFactory = await ethers.getContractFactory("UniswapManager");
   const swapManager = await swapManagerFactory.deploy(swapFactory, weth9);
   const swapManagerDeployed = await swapManager.deployed();
   console.log("swapManagerAddress:", swapManagerDeployed.address);
@@ -24,15 +22,21 @@ async function deploy() {
   const factory = await factoryFactory.deploy();
   const factoryDeployed = await factory.deployed();
   console.log("factoryAddress:", factoryDeployed.address);
-  await factory.enable(swapManagerDeployed.address, dai, usdc, usdt, weth9);
-
-  const planManagerFactory = await ethers.getContractFactory("AipPlanManager");
-  const planManager = await planManagerFactory.deploy(
-    factoryDeployed.address,
-    weth9
+  const planManagerFactory = await ethers.getContractFactory(
+    "NonfungiblePlanManager"
   );
+  const planManager = await planManagerFactory.deploy(factoryDeployed.address);
   const planManagerDeployed = await planManager.deployed();
   console.log("planManagerAddress:", planManagerDeployed.address);
+
+  await factory.enable(
+    swapManagerDeployed.address,
+    planManagerDeployed.address,
+    dai,
+    usdc,
+    usdt,
+    weth9
+  );
 
   // const planManager = new ethers.Contract(
   //   "0xf9b1222665cf89875baaDd3e6eA14f29d130b133", // PLAN_MANAGER_ADDRESS
