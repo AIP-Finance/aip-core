@@ -47,9 +47,7 @@ async function completeFixture([wallet], provider) {
     swapFactory.address,
     weth9.address
   );
-  const swapManagerFactory = await ethers.getContractFactory(
-    "AipUniswapManager"
-  );
+  const swapManagerFactory = await ethers.getContractFactory("UniswapManager");
   const swapManager = await swapManagerFactory.deploy(
     swapFactory.address,
     weth9.address
@@ -57,11 +55,10 @@ async function completeFixture([wallet], provider) {
 
   const factoryFactory = await ethers.getContractFactory("AipFactory");
   const factory = await factoryFactory.deploy();
-  const planManagerFactory = await ethers.getContractFactory("AipPlanManager");
-  const planManager = await planManagerFactory.deploy(
-    factory.address,
-    weth9.address
+  const planManagerFactory = await ethers.getContractFactory(
+    "NonfungiblePlanManager"
   );
+  const planManager = await planManagerFactory.deploy(factory.address);
 
   return {
     weth9,

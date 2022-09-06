@@ -29,7 +29,14 @@ describe("PoolReward", () => {
   const subscribe = () =>
     planManager
       .connect(other)
-      .subscribe([usdt.address, tokens[1].address, frequency, tickAmount, 3]);
+      .mint([
+        other.address,
+        usdt.address,
+        tokens[1].address,
+        frequency,
+        tickAmount,
+        3,
+      ]);
 
   const fixture = async (wallets, provider) => {
     const {
@@ -47,6 +54,7 @@ describe("PoolReward", () => {
 
     await factory.enable(
       swapManager.address,
+      planManager.address,
       dai.address,
       usdc.address,
       usdt.address,

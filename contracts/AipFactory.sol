@@ -10,6 +10,7 @@ import "./libraries/PoolAddress.sol";
 contract AipFactory is IAipFactory, AipPoolDeployer, NoDelegateCall {
     address public override owner;
     address public override swapManager;
+    address public override planManager;
     address public override DAI;
     address public override USDC;
     address public override USDT;
@@ -44,6 +45,7 @@ contract AipFactory is IAipFactory, AipPoolDeployer, NoDelegateCall {
         pool = deploy(
             address(this),
             swapManager,
+            planManager,
             WETH9,
             token0,
             token1,
@@ -60,6 +62,7 @@ contract AipFactory is IAipFactory, AipPoolDeployer, NoDelegateCall {
 
     function enable(
         address _swapManager,
+        address _planManager,
         address _DAI,
         address _USDC,
         address _USDT,
@@ -69,6 +72,7 @@ contract AipFactory is IAipFactory, AipPoolDeployer, NoDelegateCall {
         require(msg.sender == owner, "Not owner");
         require(
             _swapManager != address(0) &&
+                _planManager != address(0) &&
                 _DAI != address(0) &&
                 _USDC != address(0) &&
                 _USDT != address(0) &&
@@ -76,11 +80,12 @@ contract AipFactory is IAipFactory, AipPoolDeployer, NoDelegateCall {
         );
         enabled = true;
         swapManager = _swapManager;
+        planManager = _planManager;
         DAI = _DAI;
         USDC = _USDC;
         USDT = _USDT;
         WETH9 = _WETH9;
-        emit Enabled(swapManager, DAI, USDC, USDT, WETH9);
+        emit Enabled(swapManager, planManager, DAI, USDC, USDT, WETH9);
     }
 
     function setOwner(address _owner) external override {

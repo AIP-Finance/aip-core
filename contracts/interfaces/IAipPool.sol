@@ -66,6 +66,8 @@ interface IAipPool {
 
     function swapManager() external view returns (address);
 
+    function planManager() external view returns (address);
+
     function WETH9() external view returns (address);
 
     function rewardToken() external view returns (address);
@@ -154,18 +156,15 @@ interface IAipPool {
         bytes calldata data
     ) external returns (uint256 index);
 
-    function claim(address requester, uint256 planIndex)
-        external
-        returns (uint256 received1);
+    function claim(uint256 planIndex) external returns (uint256 received1);
 
     function extend(
-        address requester,
         uint256 planIndex,
         uint256 extendedAmount0,
         bytes calldata data
     ) external;
 
-    function unsubscribe(address requester, uint256 planIndex)
+    function unsubscribe(uint256 planIndex, bytes calldata data)
         external
         returns (uint256 received0, uint256 received1);
 
@@ -175,7 +174,7 @@ interface IAipPool {
         external
         returns (address swapPool, address swapWETH9Pool);
 
-    function claimReward(address requester, uint256 planIndex)
+    function claimReward(uint256 planIndex)
         external
         returns (
             address token,

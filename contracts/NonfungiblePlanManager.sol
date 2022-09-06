@@ -2,50 +2,47 @@
 pragma solidity ^0.8.0;
 
 import "./abstracts/Multicall.sol";
-import "./base/AipPayments.sol";
-import "./access/Ownable.sol";
+import "./base/ERC721Permit.sol";
 import "./interfaces/IAipPoolDeployer.sol";
 import "./interfaces/IERC20.sol";
 import "./interfaces/IAipPool.sol";
 import "./interfaces/IAipFactory.sol";
+import "./interfaces/INonfungiblePlanManager.sol";
+import "./interfaces/IERC721Access.sol";
 import "./interfaces/callback/IAipSubscribeCallback.sol";
 import "./interfaces/callback/IAipExtendCallback.sol";
+import "./interfaces/callback/IAipBurnCallback.sol";
 import "./libraries/CallbackValidation.sol";
 import "./libraries/PoolAddress.sol";
+import "./libraries/TransferHelper.sol";
 
-contract AipPlanManager is
+contract NonfungiblePlanManager is
     Multicall,
-    AipPayments,
+    ERC721Permit,
+    IERC721Access,
+    INonfungiblePlanManager,
     IAipSubscribeCallback,
-    IAipExtendCallback
+    IAipExtendCallback,
+    IAipBurnCallback
 {
-    address public immutable factory;
+    address public immutable override factory;
     uint256 private _nextId = 1;
-    struct Plan {
-        address investor;
-        address token0;
-        address token1;
-        uint24 frequency;
-        uint256 index;
-        uint256 tickAmount;
-        uint256 createdTime;
-    }
-    struct PlanStatistics {
-        uint256 swapAmount0;
-        uint256 swapAmount1;
-        uint256 claimedAmount1;
-        uint256 ticks;
-        uint256 remainingTicks;
-        uint256 startedTime;
-        uint256 endedTime;
-        uint256 lastTriggerTime;
-    }
+    mapping(address => mapping(address => mapping(uint24 => mapping(uint256 => uint256))))
+        public
+        override getTokenId;
+
     mapping(uint256 => Plan) private _plans;
+    mapping(address => uint256[]) private _investorPlans;
 
-    mapping(address => uint256[]) public investorPlans;
-
-    constructor(address _factory, address _WETH9) AipPayments(_WETH9) {
+    constructor(address _factory)
+        ERC721Permit("Aip Plan NFT", "AIP-PLAN", "1")
+    {
         factory = _factory;
+    }
+
+    modifier isAuthorizedForToken(uint256 tokenId) {
+        require(_isApprovedOrOwner(msg.sender, tokenId), "Not approved");
+        _;
     }
 
     struct SubscribeCallbackData {
@@ -62,7 +59,12 @@ contract AipPlanManager is
             (SubscribeCallbackData)
         );
         CallbackValidation.verifyCallback(factory, decoded.poolInfo);
-        pay(decoded.poolInfo.token0, decoded.payer, msg.sender, amount);
+        TransferHelper.safeTransferFrom(
+            decoded.poolInfo.token0,
+            decoded.payer,
+            msg.sender,
+            amount
+        );
     }
 
     struct ExtendCallbackData {
@@ -79,16 +81,43 @@ contract AipPlanManager is
             (ExtendCallbackData)
         );
         CallbackValidation.verifyCallback(factory, decoded.poolInfo);
-        pay(decoded.poolInfo.token0, decoded.payer, msg.sender, amount);
+        TransferHelper.safeTransferFrom(
+            decoded.poolInfo.token0,
+            decoded.payer,
+            msg.sender,
+            amount
+        );
     }
 
-    function plansOf(address addr) public view returns (uint256[] memory) {
-        return investorPlans[addr];
+    struct BurnCallbackData {
+        PoolAddress.PoolInfo poolInfo;
+        uint256 tokenId;
+    }
+
+    function aipBurnCallback(bytes calldata data)
+        external
+        override
+        returns (address receiver)
+    {
+        BurnCallbackData memory decoded = abi.decode(data, (BurnCallbackData));
+        CallbackValidation.verifyCallback(factory, decoded.poolInfo);
+        receiver = ownerOf(decoded.tokenId);
+        _burn(decoded.tokenId);
+    }
+
+    function plansOf(address addr)
+        external
+        view
+        override
+        returns (uint256[] memory)
+    {
+        return _investorPlans[addr];
     }
 
     function getPlan(uint256 planIndex)
         public
         view
+        override
         returns (Plan memory plan, PlanStatistics memory statistics)
     {
         plan = _plans[planIndex];
@@ -112,6 +141,7 @@ contract AipPlanManager is
     function createPoolIfNecessary(PoolAddress.PoolInfo calldata poolInfo)
         external
         payable
+        override
         returns (address pool)
     {
         pool = IAipFactory(factory).getPool(
@@ -128,49 +158,51 @@ contract AipPlanManager is
         }
     }
 
-    struct SubscribeParams {
-        address token0;
-        address token1;
-        uint24 frequency;
-        uint256 tickAmount;
-        uint256 periods;
-    }
-
-    function subscribe(SubscribeParams calldata params)
+    function mint(MintParams calldata params)
         external
         payable
-        returns (uint256 id, IAipPool pool)
+        override
+        returns (uint256 tokenId, uint256 planIndex)
     {
         PoolAddress.PoolInfo memory poolInfo = PoolAddress.PoolInfo({
             token0: params.token0,
             token1: params.token1,
             frequency: params.frequency
         });
-        pool = IAipPool(PoolAddress.computeAddress(factory, poolInfo));
-        uint256 index = pool.subscribe(
-            msg.sender,
+        IAipPool pool = IAipPool(PoolAddress.computeAddress(factory, poolInfo));
+        planIndex = pool.subscribe(
+            params.investor,
             params.tickAmount,
             params.periods,
             abi.encode(
                 SubscribeCallbackData({poolInfo: poolInfo, payer: msg.sender})
             )
         );
-        id = _nextId++;
-        _plans[id] = Plan({
-            investor: msg.sender,
+        _mint(msg.sender, (tokenId = _nextId++));
+        _plans[tokenId] = Plan({
+            nonce: 0,
+            operator: address(0),
+            investor: params.investor,
             token0: params.token0,
             token1: params.token1,
             frequency: params.frequency,
-            index: index,
+            index: planIndex,
             tickAmount: params.tickAmount,
             createdTime: block.timestamp
         });
-        investorPlans[msg.sender].push(id);
+        getTokenId[params.token0][params.token1][params.frequency][
+            planIndex
+        ] = tokenId;
+        _investorPlans[msg.sender].push(tokenId);
     }
 
-    function extend(uint256 id, uint256 periods) external payable {
-        Plan memory plan = _plans[id];
-        require(plan.index > 0, "Invalid plan");
+    function extend(uint256 tokenId, uint256 periods)
+        external
+        payable
+        override
+    {
+        require(_exists(tokenId), "Invalid token");
+        Plan memory plan = _plans[tokenId];
         PoolAddress.PoolInfo memory poolInfo = PoolAddress.PoolInfo({
             token0: plan.token0,
             token1: plan.token1,
@@ -178,7 +210,6 @@ contract AipPlanManager is
         });
         IAipPool pool = IAipPool(PoolAddress.computeAddress(factory, poolInfo));
         pool.extend(
-            msg.sender,
             plan.index,
             periods,
             abi.encode(
@@ -187,49 +218,94 @@ contract AipPlanManager is
         );
     }
 
-    function unsubscribe(uint256 id)
+    function burn(uint256 tokenId)
         external
+        override
+        isAuthorizedForToken(tokenId)
         returns (uint256 received0, uint256 received1)
     {
-        Plan memory plan = _plans[id];
-        require(plan.index > 0, "Invalid plan");
+        require(_exists(tokenId), "Invalid token");
+        Plan memory plan = _plans[tokenId];
         PoolAddress.PoolInfo memory poolInfo = PoolAddress.PoolInfo({
             token0: plan.token0,
             token1: plan.token1,
             frequency: plan.frequency
         });
         IAipPool pool = IAipPool(PoolAddress.computeAddress(factory, poolInfo));
-        return pool.unsubscribe(msg.sender, plan.index);
+        return
+            pool.unsubscribe(
+                plan.index,
+                abi.encode(
+                    BurnCallbackData({poolInfo: poolInfo, tokenId: tokenId})
+                )
+            );
     }
 
-    function claim(uint256 id) external returns (uint256 received1) {
-        Plan memory plan = _plans[id];
-        require(plan.index > 0, "Invalid plan");
-        PoolAddress.PoolInfo memory poolInfo = PoolAddress.PoolInfo({
-            token0: plan.token0,
-            token1: plan.token1,
-            frequency: plan.frequency
-        });
-        IAipPool pool = IAipPool(PoolAddress.computeAddress(factory, poolInfo));
-        return pool.claim(msg.sender, plan.index);
-    }
-
-    function claimReward(uint256 id)
+    function claim(uint256 tokenId)
         external
+        override
+        returns (uint256 received1)
+    {
+        require(_exists(tokenId), "Invalid token");
+        Plan memory plan = _plans[tokenId];
+        PoolAddress.PoolInfo memory poolInfo = PoolAddress.PoolInfo({
+            token0: plan.token0,
+            token1: plan.token1,
+            frequency: plan.frequency
+        });
+        IAipPool pool = IAipPool(PoolAddress.computeAddress(factory, poolInfo));
+        return pool.claim(plan.index);
+    }
+
+    function claimReward(uint256 tokenId)
+        external
+        override
         returns (
             address token,
             uint256 unclaimedAmount,
             uint256 claimedAmount
         )
     {
-        Plan memory plan = _plans[id];
-        require(plan.index > 0, "Invalid plan");
+        require(_exists(tokenId), "Invalid token");
+        Plan memory plan = _plans[tokenId];
         PoolAddress.PoolInfo memory poolInfo = PoolAddress.PoolInfo({
             token0: plan.token0,
             token1: plan.token1,
             frequency: plan.frequency
         });
         IAipPool pool = IAipPool(PoolAddress.computeAddress(factory, poolInfo));
-        return pool.claimReward(msg.sender, plan.index);
+        return pool.claimReward(plan.index);
+    }
+
+    function _getAndIncrementNonce(uint256 tokenId)
+        internal
+        override
+        returns (uint256)
+    {
+        return uint256(_plans[tokenId].nonce++);
+    }
+
+    function getApproved(uint256 tokenId)
+        public
+        view
+        override(ERC721)
+        returns (address)
+    {
+        require(
+            _exists(tokenId),
+            "ERC721: approved query for nonexistent token"
+        );
+
+        return _plans[tokenId].operator;
+    }
+
+    function _approve(address to, uint256 tokenId) internal override(ERC721) {
+        _plans[tokenId].operator = to;
+        emit Approval(ownerOf(tokenId), to, tokenId);
+    }
+
+    function isLocked(uint256 tokenId) external view override returns (bool) {
+        Plan memory plan = _plans[tokenId];
+        return ownerOf(tokenId) != plan.investor;
     }
 }
