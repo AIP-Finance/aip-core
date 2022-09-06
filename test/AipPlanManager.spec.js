@@ -776,74 +776,53 @@ describe("NonfungiblePlanManager", () => {
     });
     it("right ratio", async () => {
       await subscribe(investor1, tickAmount, ticks);
+      await subscribe(investor2, tickAmount.mul(2), ticks);
       await pool.trigger();
-      await subscribe(investor2, tickAmount, ticks);
+      await pool.initReward(tokens[2].address, other.address);
+      await tokens[2].connect(other).approve(pool.address, rewardAmount.mul(3));
+      await pool.connect(other).depositReward(rewardAmount);
+      await pool.connect(other).depositReward(rewardAmount.mul(2));
+      const balanceI1Before = await tokens[2].balanceOf(investor1.address);
+      const balanceI2Before = await tokens[2].balanceOf(investor2.address);
+      await planManager.connect(investor1).claimReward(1);
+      await planManager.connect(investor2).claimReward(2);
+      const balanceI1 = await tokens[2].balanceOf(investor1.address);
+      const balanceI2 = await tokens[2].balanceOf(investor2.address);
+      expect(balanceI1.sub(balanceI1Before)).to.equal(rewardAmount);
+      expect(balanceI2.sub(balanceI2Before)).to.equal(rewardAmount.mul(2));
+
       await ethers.provider.send("evm_increaseTime", [frequency * TIME_UNIT]);
       await ethers.provider.send("evm_mine");
       await pool.trigger();
-      await pool.initReward(tokens[2].address, other.address);
-      await tokens[2].connect(other).approve(pool.address, rewardAmount);
-      await pool.connect(other).depositReward(rewardAmount);
-      const balanceI1Before = await tokens[2].balanceOf(investor1.address);
       await planManager.connect(investor1).claimReward(1);
-      const balanceI1 = await tokens[2].balanceOf(investor1.address);
-      const balanceI2Before = await tokens[2].balanceOf(investor2.address);
       await planManager.connect(investor2).claimReward(2);
-      const balanceI2 = await tokens[2].balanceOf(investor2.address);
-      expect(balanceI1.sub(balanceI1Before)).to.equal(
-        rewardAmount.mul(2).div(3)
-      );
-      expect(balanceI2.sub(balanceI2Before)).to.equal(rewardAmount.div(3));
+      const balanceI1After = await tokens[2].balanceOf(investor1.address);
+      const balanceI2After = await tokens[2].balanceOf(investor2.address);
+      expect(balanceI1After).to.equal(balanceI1);
+      expect(balanceI2After).to.equal(balanceI2);
     });
-    it("multiple time", async () => {
+    it("claim again", async () => {
       await subscribe(investor1, tickAmount, ticks);
       await pool.trigger();
-      await subscribe(investor2, tickAmount, ticks);
-      await ethers.provider.send("evm_increaseTime", [frequency * TIME_UNIT]);
-      await ethers.provider.send("evm_mine");
-      await pool.trigger();
       await pool.initReward(tokens[2].address, other.address);
-      await tokens[2].connect(other).approve(pool.address, rewardAmount);
+      await tokens[2].connect(other).approve(pool.address, rewardAmount.mul(6));
       await pool.connect(other).depositReward(rewardAmount);
-
-      const balanceI1Cycle1Before = await tokens[2].balanceOf(
-        investor1.address
-      );
+      const balanceBefore = await tokens[2].balanceOf(investor1.address);
       await planManager.connect(investor1).claimReward(1);
-      const balanceI1Cycle1 = await tokens[2].balanceOf(investor1.address);
-      const balanceI2Cycle1Before = await tokens[2].balanceOf(
-        investor2.address
-      );
-      await planManager.connect(investor2).claimReward(2);
-      const balanceI2Cycle1 = await tokens[2].balanceOf(investor2.address);
-      expect(balanceI1Cycle1.sub(balanceI1Cycle1Before)).to.equal(
-        rewardAmount.mul(2).div(3)
-      );
-      expect(balanceI2Cycle1.sub(balanceI2Cycle1Before)).to.equal(
-        rewardAmount.div(3)
-      );
+      const balance = await tokens[2].balanceOf(investor1.address);
+      expect(balance.sub(balanceBefore)).to.equal(rewardAmount);
       await ethers.provider.send("evm_increaseTime", [frequency * TIME_UNIT]);
       await ethers.provider.send("evm_mine");
       await pool.trigger();
-      await tokens[2].connect(other).approve(pool.address, rewardAmount);
-      await pool.connect(other).depositReward(rewardAmount);
+      await pool.connect(other).depositReward(rewardAmount.mul(3));
 
-      const balanceI1Cycle2Before = await tokens[2].balanceOf(
-        investor1.address
-      );
+      await ethers.provider.send("evm_increaseTime", [frequency * TIME_UNIT]);
+      await ethers.provider.send("evm_mine");
+      await pool.trigger();
+      await pool.connect(other).depositReward(rewardAmount.mul(2));
       await planManager.connect(investor1).claimReward(1);
-      const balanceI1Cycle2 = await tokens[2].balanceOf(investor1.address);
-      const balanceI2Cycle2Before = await tokens[2].balanceOf(
-        investor2.address
-      );
-      await planManager.connect(investor2).claimReward(2);
-      const balanceI2Cycle2 = await tokens[2].balanceOf(investor2.address);
-      expect(balanceI1Cycle2.sub(balanceI1Cycle2Before)).to.equal(
-        rewardAmount.div(2)
-      );
-      expect(balanceI2Cycle2.sub(balanceI2Cycle2Before)).to.equal(
-        rewardAmount.div(2)
-      );
+      const balanceAfter = await tokens[2].balanceOf(investor1.address);
+      expect(balanceAfter.sub(balance)).to.equal(rewardAmount.mul(5));
     });
     it("returns 0 if no reward", async () => {
       await subscribe(investor1, tickAmount, ticks);
