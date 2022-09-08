@@ -210,16 +210,8 @@ describe("PoolReward", () => {
       await tokens[2].connect(operator).approve(pool.address, rewardAmount);
 
       await pool.connect(operator).depositReward(rewardAmount);
-      const {
-        rewardAmount: reward,
-        paymentAmount0,
-        tickIndexStart,
-        tickIndexEnd,
-      } = await pool.rewardCycles(1);
+      const { reward } = await pool.tickInfo(2);
       expect(rewardAmount).to.equal(reward);
-      expect(paymentAmount0).to.equal(tickAmount.mul(2));
-      expect(tickIndexStart.toNumber()).to.equal(1);
-      expect(tickIndexEnd.toNumber()).to.equal(2);
     });
     it("fails if caller is not operator", async () => {
       await pool.initReward(tokens[2].address, operator.address);
