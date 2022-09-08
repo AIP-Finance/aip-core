@@ -154,13 +154,15 @@ contract AipPool is IAipPool, ReentrancyGuard {
             uint256 amount0,
             uint256 amount1,
             uint256 fee0,
-            uint256 time
+            uint256 time,
+            uint256 reward
         )
     {
         amount0 = _tickVolumes0[tick];
         amount1 = _tickVolumes1[tick];
         fee0 = _tickFees0[tick];
         time = _tickTimes[tick];
+        reward = _tickRewards[tick];
     }
 
     function getPlanStatistics(uint256 planIndex)

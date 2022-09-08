@@ -39,7 +39,7 @@ async function deploy() {
   );
 
   // const planManager = new ethers.Contract(
-  //   "0xf9b1222665cf89875baaDd3e6eA14f29d130b133", // PLAN_MANAGER_ADDRESS
+  //   "0xadd39eA9a42A51C4666637535B670194Ad121A97", // PLAN_MANAGER_ADDRESS
   //   planManagerAbi,
   //   wallet2
   // );
@@ -65,13 +65,17 @@ async function deploy() {
     }
   }
 
-  //   const factoryDeployed = {
-  //     address: "0xE8f97a47907dc8d166728A3058bEA178511D6937",
-  //   };
+  // const factoryDeployed = {
+  //   address: "0x65170bC4066da2c2A6DCb4441E02A927fE6E9d59",
+  // };
 
-  //   const planManagerDeployed = {
-  //     address: "0xD08f6b2996e0Ea57554781d973e34a89390eBAA2",
-  //   };
+  // const swapManagerDeployed = {
+  //   address: "0x4F4F29130B4C0C5c04A2C4DBB085888E9FB79f55",
+  // };
+
+  // const planManagerDeployed = {
+  //   address: "0xadd39eA9a42A51C4666637535B670194Ad121A97",
+  // };
 
   await hre.run("verify:verify", {
     address: factoryDeployed.address,
@@ -85,7 +89,7 @@ async function deploy() {
 
   await hre.run("verify:verify", {
     address: planManagerDeployed.address,
-    constructorArguments: [factoryDeployed.address, weth9],
+    constructorArguments: [factoryDeployed.address],
   });
 }
 
