@@ -23,13 +23,13 @@ contract AipPool is IAipPool, ReentrancyGuard {
     address public override rewardOperator;
     address public immutable override token0;
     address public immutable override token1;
-    uint24 public immutable override frequency;
-    uint24 public override swapFee = 3000;
-    uint24 public override swapWETH9Fee = 3000;
-    uint24 private constant TIME_UNIT = 60;
+    uint8 public immutable override frequency;
+    uint16 public override swapFee = 3000;
+    uint16 public override swapWETH9Fee = 3000;
+    uint16 private constant PROTOCOL_FEE = 1000;
+    uint8 private constant TIME_UNIT = 60;
     uint24 private constant PROCESSING_GAS = 400000;
-    uint24 private constant PROTOCOL_FEE = 1000;
-    uint256 private constant MIN_TICK_AMOUNT = 10 * 1e18;
+    uint64 private constant MIN_TICK_AMOUNT = 10 * 1e18;
 
     uint256 private _nextPlanIndex = 1;
     uint256 private _nextTickIndex = 1;
@@ -387,7 +387,7 @@ contract AipPool is IAipPool, ReentrancyGuard {
         emit Trigger(tickIndex, amount0, amount1, triggerFee0, protocolFee0);
     }
 
-    function setSwapFee(uint24 _swapFee, uint24 _swapWETH9Fee)
+    function setSwapFee(uint16 _swapFee, uint16 _swapWETH9Fee)
         external
         override
         nonReentrant

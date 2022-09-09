@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.0;
+pragma solidity ^0.8.0;
 
 library PoolAddress {
     bytes32 internal constant POOL_INIT_CODE_HASH =
-        0xf1b448e56b9e5b7805b0f012c91d73f0357f9e82b39b04a1881f9ca763364980;
+        0x44c7eed8d9ba88dd829a20f76442c208092c84885cde650275bd755234f94a75;
 
     struct PoolInfo {
         address token0;
         address token1;
-        uint24 frequency;
+        uint8 frequency;
     }
 
     function getPoolInfo(
         address token0,
         address token1,
-        uint24 frequency
+        uint8 frequency
     ) internal pure returns (PoolInfo memory) {
         return PoolInfo({token0: token0, token1: token1, frequency: frequency});
     }
