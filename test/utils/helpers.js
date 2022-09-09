@@ -6,7 +6,7 @@ function getCreate2Address(
   bytecode
 ) {
   const constructorArgumentsEncoded = utils.defaultAbiCoder.encode(
-    ["address", "address", "uint24"],
+    ["address", "address", "uint8"],
     [token0, token1, frequency]
   );
   const create2Inputs = [
@@ -24,7 +24,7 @@ function getCreate2Address(
 function getPoolId(token0, token1, frequency) {
   const hexString = utils.keccak256(
     utils.defaultAbiCoder.encode(
-      ["address", "address", "uint24"],
+      ["address", "address", "uint8"],
       [token0, token1, frequency]
     )
   );

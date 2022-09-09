@@ -37,10 +37,10 @@ interface IAipPool {
     );
 
     event SwapFeeChanged(
-        uint24 oldSwapFee,
-        uint24 oldSwapWETH9Fee,
-        uint24 newSwapFee,
-        uint24 newSwapWETH9Fee
+        uint16 oldSwapFee,
+        uint16 oldSwapWETH9Fee,
+        uint16 newSwapFee,
+        uint16 newSwapWETH9Fee
     );
     event CollectProtocol(address requester, address receiver, uint256 amount);
 
@@ -71,11 +71,11 @@ interface IAipPool {
 
     function token1() external view returns (address);
 
-    function frequency() external view returns (uint24);
+    function frequency() external view returns (uint8);
 
-    function swapFee() external view returns (uint24);
+    function swapFee() external view returns (uint16);
 
-    function swapWETH9Fee() external view returns (uint24);
+    function swapWETH9Fee() external view returns (uint16);
 
     function protocolFee() external view returns (uint256);
 
@@ -149,7 +149,7 @@ interface IAipPool {
 
     function trigger() external returns (uint256 amount0, uint256 amount1);
 
-    function setSwapFee(uint24 _swapFee, uint24 _swapWETH9Fee)
+    function setSwapFee(uint16 _swapFee, uint16 _swapWETH9Fee)
         external
         returns (address swapPool, address swapWETH9Pool);
 

@@ -331,6 +331,8 @@ describe("NonfungiblePlanManager", () => {
       const tokenOwner = await planManager.ownerOf(1);
       expect(tokenOwner).to.eq(investor1.address);
 
+      console.log(await planManager.tokenURI(1));
+
       const tickInfo1 = await pool.tickInfo(1);
       const tickInfo2 = await pool.tickInfo(2);
       const tickInfo3 = await pool.tickInfo(3);

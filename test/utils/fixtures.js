@@ -53,12 +53,20 @@ async function completeFixture([wallet], provider) {
     weth9.address
   );
 
+  const nftDescriptorFactory = await ethers.getContractFactory(
+    "NonfungibleTokenPlanDescriptor"
+  );
+  const nftDescriptor = await nftDescriptorFactory.deploy(weth9.address);
+
   const factoryFactory = await ethers.getContractFactory("AipFactory");
   const factory = await factoryFactory.deploy();
   const planManagerFactory = await ethers.getContractFactory(
     "NonfungiblePlanManager"
   );
-  const planManager = await planManagerFactory.deploy(factory.address);
+  const planManager = await planManagerFactory.deploy(
+    factory.address,
+    nftDescriptor.address
+  );
 
   return {
     weth9,
