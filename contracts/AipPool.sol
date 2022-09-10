@@ -291,6 +291,8 @@ contract AipPool is IAipPool, ReentrancyGuard {
         nonReentrant
         returns (uint256 received0, uint256 received1)
     {
+        address receiver = IAipBurnCallback(planManager).aipBurnCallback(data);
+        require(receiver != address(0));
         PlanInfo storage plan = plans[planIndex];
         require(plan.endTick >= _nextTickIndex, "Finished");
         if (plan.endTick >= _nextTickIndex) {
@@ -314,19 +316,18 @@ contract AipPool is IAipPool, ReentrancyGuard {
             received1 = amount1 - plan.claimedAmount1;
             plan.claimedAmount1 += received1;
         }
-
-        address receiver = IAipBurnCallback(planManager).aipBurnCallback(data);
-        require(receiver != address(0));
-
         uint256 balance0Before = balance0();
         uint256 balance1Before = balance1();
 
-        TransferHelper.safeTransfer(token0, receiver, received0);
+        if (received0 > 0) {
+            TransferHelper.safeTransfer(token0, receiver, received0);
+            require(balance0Before - received0 <= balance0(), "U0");
+        }
         if (received1 > 0) {
             TransferHelper.safeTransfer(token1, receiver, received1);
             require(balance1Before - received1 <= balance1(), "U1");
         }
-        require(balance0Before - received0 <= balance0(), "U0");
+
         emit Unsubscribe(planIndex, received0, received1);
     }
 
