@@ -294,7 +294,6 @@ contract AipPool is IAipPool, ReentrancyGuard {
         address receiver = IAipBurnCallback(planManager).aipBurnCallback(data);
         require(receiver != address(0));
         PlanInfo storage plan = plans[planIndex];
-        require(plan.endTick >= _nextTickIndex, "Finished");
         if (plan.endTick >= _nextTickIndex) {
             uint256 oldEndTick = plan.endTick;
             plan.endTick = _nextTickIndex - 1;
@@ -417,7 +416,6 @@ contract AipPool is IAipPool, ReentrancyGuard {
     function claimReward(uint256 planIndex)
         external
         override
-        isNotLocked(planIndex)
         nonReentrant
         returns (
             address token,
