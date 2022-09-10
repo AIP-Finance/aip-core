@@ -22,7 +22,7 @@ interface IAipPool {
 
     event Unsubscribe(uint256 planIndex, uint256 received0, uint256 received1);
 
-    event Claim(uint256 planIndex, uint256 received1);
+    event Withdraw(uint256 planIndex, uint256 received1);
 
     event ClaimReward(
         uint256 planIndex,
@@ -48,7 +48,7 @@ interface IAipPool {
         uint256 index;
         address investor;
         uint256 tickAmount0;
-        uint256 claimedAmount1;
+        uint256 withdrawnAmount1;
         uint256 startTick;
         uint256 endTick;
         uint256 claimedRewardIndex;
@@ -88,7 +88,7 @@ interface IAipPool {
             uint256 index,
             address investor,
             uint256 tickAmount0,
-            uint256 claimedAmount1,
+            uint256 withdrawnAmount1,
             uint256 startTick,
             uint256 endTick,
             uint256 claimedRewardIndex,
@@ -120,7 +120,7 @@ interface IAipPool {
         view
         returns (
             uint256 swapAmount1,
-            uint256 claimedAmount1,
+            uint256 withdrawnAmount1,
             uint256 ticks,
             uint256 remainingTicks,
             uint256 startedTime,
@@ -135,7 +135,7 @@ interface IAipPool {
         bytes calldata data
     ) external returns (uint256 index);
 
-    function claim(uint256 planIndex) external returns (uint256 received1);
+    function withdraw(uint256 planIndex) external returns (uint256 received1);
 
     function extend(
         uint256 planIndex,

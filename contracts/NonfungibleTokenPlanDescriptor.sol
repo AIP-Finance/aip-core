@@ -51,7 +51,7 @@ contract NonfungibleTokenPlanDescriptor is INonfungibleTokenPlanDescriptor {
                     tickAmount: plan.tickAmount,
                     ongoing: plan.tickAmount * statistics.remainingTicks,
                     invested: statistics.swapAmount1,
-                    claimed: statistics.claimedAmount1,
+                    withdrawn: statistics.withdrawnAmount1,
                     ticks: statistics.ticks,
                     remainingTicks: statistics.remainingTicks
                 })

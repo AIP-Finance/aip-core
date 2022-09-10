@@ -23,7 +23,7 @@ library NFTDescriptor {
         uint256 tickAmount;
         uint256 ongoing;
         uint256 invested;
-        uint256 claimed;
+        uint256 withdrawn;
         uint256 ticks;
         uint256 remainingTicks;
     }
@@ -355,9 +355,9 @@ library NFTDescriptor {
             invested: params.invested == 0
                 ? "0"
                 : decimalString(params.invested, params.tokenDecimals, false),
-            claimed: params.claimed == 0
+            withdrawn: params.withdrawn == 0
                 ? "0"
-                : decimalString(params.claimed, params.tokenDecimals, false),
+                : decimalString(params.withdrawn, params.tokenDecimals, false),
             ticks: params.ticks,
             currentTicks: params.ticks - params.remainingTicks
         });

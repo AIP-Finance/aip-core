@@ -17,7 +17,7 @@ interface INonfungiblePlanManager {
     }
     struct PlanStatistics {
         uint256 swapAmount1;
-        uint256 claimedAmount1;
+        uint256 withdrawnAmount1;
         uint256 ticks;
         uint256 remainingTicks;
         uint256 startedTime;
@@ -59,7 +59,7 @@ interface INonfungiblePlanManager {
         external
         returns (uint256 received0, uint256 received1);
 
-    function claim(uint256 id) external returns (uint256 received1);
+    function withdraw(uint256 id) external returns (uint256 received1);
 
     function claimReward(uint256 id)
         external

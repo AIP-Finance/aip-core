@@ -149,7 +149,7 @@ contract NonfungiblePlanManager is
         IAipPool pool = IAipPool(PoolAddress.computeAddress(factory, poolInfo));
         (
             statistics.swapAmount1,
-            statistics.claimedAmount1,
+            statistics.withdrawnAmount1,
             statistics.ticks,
             statistics.remainingTicks,
             statistics.startedTime,
@@ -261,7 +261,7 @@ contract NonfungiblePlanManager is
             );
     }
 
-    function claim(uint256 tokenId)
+    function withdraw(uint256 tokenId)
         external
         override
         returns (uint256 received1)
@@ -274,7 +274,7 @@ contract NonfungiblePlanManager is
             frequency: plan.frequency
         });
         IAipPool pool = IAipPool(PoolAddress.computeAddress(factory, poolInfo));
-        return pool.claim(plan.index);
+        return pool.withdraw(plan.index);
     }
 
     function claimReward(uint256 tokenId)

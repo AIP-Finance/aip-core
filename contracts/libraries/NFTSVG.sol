@@ -21,7 +21,7 @@ library NFTSVG {
         string tickAmount;
         string ongoing;
         string invested;
-        string claimed;
+        string withdrawn;
         uint256 ticks;
         uint256 currentTicks;
     }
@@ -128,7 +128,7 @@ library NFTSVG {
                 ),
                 generateBodyInfo(
                     "Withdrawn",
-                    params.claimed,
+                    params.withdrawn,
                     params.tokenSymbol,
                     "329"
                 ),

@@ -171,7 +171,7 @@ contract AipPool is IAipPool, ReentrancyGuard {
         override
         returns (
             uint256 swapAmount1,
-            uint256 claimedAmount1,
+            uint256 withdrawnAmount1,
             uint256 ticks,
             uint256 remainingTicks,
             uint256 startedTime,
@@ -189,7 +189,7 @@ contract AipPool is IAipPool, ReentrancyGuard {
                 plan.startTick,
                 plan.endTick
             );
-            claimedAmount1 = plan.claimedAmount1;
+            withdrawnAmount1 = plan.withdrawnAmount1;
             uint256 period = frequency * TIME_UNIT;
             if (plan.endTick > lastTriggerTick) {
                 if (lastTriggerTime > 0) {
@@ -219,7 +219,7 @@ contract AipPool is IAipPool, ReentrancyGuard {
         plan.index = planIndex;
         plan.investor = investor;
         plan.tickAmount0 = tickAmount0;
-        plan.claimedAmount1 = 0;
+        plan.withdrawnAmount1 = 0;
         plan.startTick = _nextTickIndex;
         plan.endTick = _nextTickIndex + ticks - 1;
         mapping(uint256 => uint256) storage tickVolumes0 = _tickVolumes0;
@@ -263,7 +263,7 @@ contract AipPool is IAipPool, ReentrancyGuard {
         emit Extend(planIndex, oldEndTick, plan.endTick);
     }
 
-    function claim(uint256 planIndex)
+    function withdraw(uint256 planIndex)
         external
         override
         isNotLocked(planIndex)
@@ -276,13 +276,13 @@ contract AipPool is IAipPool, ReentrancyGuard {
             plan.startTick,
             plan.endTick
         );
-        received1 = amount1 - plan.claimedAmount1;
-        plan.claimedAmount1 += received1;
-        require(received1 > 0, "Nothing to claim");
+        received1 = amount1 - plan.withdrawnAmount1;
+        plan.withdrawnAmount1 += received1;
+        require(received1 > 0, "Nothing to withdraw");
         uint256 balance1Before = balance1();
         TransferHelper.safeTransfer(token1, plan.investor, received1);
         require(balance1Before - received1 <= balance1(), "C1");
-        emit Claim(planIndex, received1);
+        emit Withdraw(planIndex, received1);
     }
 
     function unsubscribe(uint256 planIndex, bytes calldata data)
@@ -312,8 +312,8 @@ contract AipPool is IAipPool, ReentrancyGuard {
                 plan.startTick,
                 plan.endTick
             );
-            received1 = amount1 - plan.claimedAmount1;
-            plan.claimedAmount1 += received1;
+            received1 = amount1 - plan.withdrawnAmount1;
+            plan.withdrawnAmount1 += received1;
         }
         uint256 balance0Before = balance0();
         uint256 balance1Before = balance1();

@@ -315,7 +315,7 @@ describe("NonfungiblePlanManager", () => {
       expect(poolPlan.index.toNumber()).equal(1);
       expect(poolPlan.investor).equal(investor1.address);
       expect(poolPlan.tickAmount0).equal(tickAmount);
-      expect(poolPlan.claimedAmount1).equal(0);
+      expect(poolPlan.withdrawnAmount1).equal(0);
       expect(poolPlan.startTick).equal(1);
       expect(poolPlan.endTick).equal(ticks);
 
@@ -577,20 +577,20 @@ describe("NonfungiblePlanManager", () => {
     });
   });
 
-  describe("#claim", () => {
+  describe("#withdraw", () => {
     it("success", async () => {
       await subscribe(investor1, tickAmount, ticks);
       const result = await swapWithoutProtocolFee(tickAmount);
       await pool.trigger();
       const balance1Before = await tokens[1].balanceOf(investor1.address);
-      await planManager.connect(investor1).claim(1);
+      await planManager.connect(investor1).withdraw(1);
       const balance1 = await tokens[1].balanceOf(investor1.address);
       expect(balance1.sub(balance1Before)).to.equal(result.amount1.abs());
     });
-    it("success if claim again", async () => {
+    it("success if withdraw again", async () => {
       await subscribe(investor1, tickAmount, ticks);
       await pool.trigger();
-      await planManager.connect(investor1).claim(1);
+      await planManager.connect(investor1).withdraw(1);
       await ethers.provider.send("evm_increaseTime", [frequency * TIME_UNIT]);
       await ethers.provider.send("evm_mine");
       const result2 = await swapWithoutProtocolFee(tickAmount);
@@ -602,7 +602,7 @@ describe("NonfungiblePlanManager", () => {
       await pool.trigger();
 
       const balance1Before = await tokens[1].balanceOf(investor1.address);
-      await planManager.connect(investor1).claim(1);
+      await planManager.connect(investor1).withdraw(1);
       const balance1 = await tokens[1].balanceOf(investor1.address);
       expect(balance1.sub(balance1Before)).to.equal(
         result2.amount1.abs().add(result3.amount1.abs())
@@ -619,8 +619,8 @@ describe("NonfungiblePlanManager", () => {
       const balance1Investor2Before = await tokens[1].balanceOf(
         investor2.address
       );
-      await planManager.connect(investor1).claim(1);
-      await planManager.connect(investor2).claim(2);
+      await planManager.connect(investor1).withdraw(1);
+      await planManager.connect(investor2).withdraw(2);
       const balance1Investor1 = await tokens[1].balanceOf(investor1.address);
       const balance1Investor2 = await tokens[1].balanceOf(investor2.address);
       expect(balance1Investor1.sub(balance1Investor1Before)).to.equal(
@@ -634,17 +634,17 @@ describe("NonfungiblePlanManager", () => {
       await subscribe(investor1, tickAmount, ticks);
       const result = await swapWithoutProtocolFee(tickAmount);
       await pool.trigger();
-      await expect(planManager.connect(investor1).claim(1))
-        .to.be.emit(pool, "Claim")
+      await expect(planManager.connect(investor1).withdraw(1))
+        .to.be.emit(pool, "Withdraw")
         .withArgs(1, result.amount1.abs());
     });
-    it("fails if nothing to claim", async () => {
+    it("fails if nothing to withdraw", async () => {
       await subscribe(investor1, tickAmount, ticks);
       await pool.trigger();
-      await planManager.connect(investor1).claim(1);
-      await expect(planManager.connect(investor1).claim(1)).to.be.revertedWith(
-        "Nothing to claim"
-      );
+      await planManager.connect(investor1).withdraw(1);
+      await expect(
+        planManager.connect(investor1).withdraw(1)
+      ).to.be.revertedWith("Nothing to withdraw");
     });
   });
 
@@ -667,7 +667,7 @@ describe("NonfungiblePlanManager", () => {
       const result3 = await swapWithoutProtocolFee(tickAmount);
       received = received.add(result3.amount1.abs());
       await pool.trigger();
-      await planManager.connect(investor1).claim(1);
+      await planManager.connect(investor1).withdraw(1);
       const balance1 = await tokens[1].balanceOf(investor1.address);
       expect(balance1.sub(balance1Before)).to.equal(received);
     });
@@ -713,8 +713,8 @@ describe("NonfungiblePlanManager", () => {
       );
       await pool.trigger();
 
-      await planManager.connect(investor1).claim(1);
-      await planManager.connect(investor2).claim(2);
+      await planManager.connect(investor1).withdraw(1);
+      await planManager.connect(investor2).withdraw(2);
       const balance1 = await tokens[1].balanceOf(investor1.address);
       const balance2 = await tokens[1].balanceOf(investor2.address);
       expect(balance1.sub(balance1Before)).to.equal(receivedI1);
@@ -822,19 +822,6 @@ describe("NonfungiblePlanManager", () => {
       expect(result.token).to.equal(constants.AddressZero);
       expect(result.unclaimedAmount).to.equal(0);
       expect(result.claimedAmount).to.equal(0);
-    });
-    it("fails if investor is not NFT owner", async () => {
-      await subscribe(investor1, tickAmount, ticks);
-      await pool.trigger();
-      await pool.initReward(tokens[2].address, other.address);
-      await tokens[2].connect(other).approve(pool.address, rewardAmount);
-      await pool.connect(other).depositReward(rewardAmount);
-      await planManager
-        .connect(investor1)
-        .transferFrom(investor1.address, investor2.address, 1);
-      await expect(
-        planManager.connect(investor1).claimReward(1)
-      ).to.be.revertedWith("Locked");
     });
   });
 
