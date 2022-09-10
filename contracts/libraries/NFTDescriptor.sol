@@ -3,11 +3,14 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "base64-sol/base64.sol";
+import "./HexStrings.sol";
+import "./NFTSVG.sol";
 
 // import "hardhat/console.sol";
 
 library NFTDescriptor {
     using Strings for uint256;
+    using HexStrings for uint256;
     struct ConstructTokenURIParams {
         uint256 tokenId;
         address stableCoinAddress;
@@ -44,7 +47,7 @@ library NFTDescriptor {
             addressToString(params.tokenAddress),
             Strings.toString(params.frequency)
         );
-        // string memory image = Base64.encode(bytes(generateSVGImage(params)));
+        string memory image = Base64.encode(bytes(generateSVGImage(params)));
 
         return
             string(
@@ -59,9 +62,9 @@ library NFTDescriptor {
                                 '", "description":"',
                                 descriptionPartOne,
                                 descriptionPartTwo,
-                                // '","image": "',
-                                // "data:image/svg+xml;base64,",
-                                // image,
+                                '","image": "',
+                                "data:image/svg+xml;base64,",
+                                image,
                                 '"}'
                             )
                         )
@@ -318,5 +321,47 @@ library NFTDescriptor {
                     escapeQuotes(params.stableCoinSymbol)
                 )
             );
+    }
+
+    function tokenToColorHex(uint256 token, uint256 offset)
+        internal
+        pure
+        returns (string memory str)
+    {
+        return string((token >> offset).toHexStringNoPrefix(3));
+    }
+
+    function generateSVGImage(ConstructTokenURIParams memory params)
+        internal
+        pure
+        returns (string memory svg)
+    {
+        NFTSVG.SVGParams memory svgParams = NFTSVG.SVGParams({
+            tokenId: params.tokenId,
+            stableCoin: addressToString(params.stableCoinAddress),
+            token: addressToString(params.tokenAddress),
+            stableCoinSymbol: params.stableCoinSymbol,
+            tokenSymbol: params.tokenSymbol,
+            color0: tokenToColorHex(
+                uint256(uint160(params.stableCoinAddress)),
+                136
+            ),
+            color1: tokenToColorHex(uint256(uint160(params.tokenAddress)), 136),
+            frequency: Strings.toString(params.frequency),
+            tickAmount: decimalString(params.tickAmount, 18, false),
+            ongoing: params.ongoing == 0
+                ? "0"
+                : decimalString(params.ongoing, 18, false),
+            invested: params.invested == 0
+                ? "0"
+                : decimalString(params.invested, params.tokenDecimals, false),
+            claimed: params.claimed == 0
+                ? "0"
+                : decimalString(params.claimed, params.tokenDecimals, false),
+            ticks: params.ticks,
+            currentTicks: params.ticks - params.remainingTicks
+        });
+
+        return NFTSVG.generateSVG(svgParams);
     }
 }
