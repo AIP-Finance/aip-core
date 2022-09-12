@@ -12,6 +12,7 @@ async function deploy() {
   const usdc = hre.network.config.USDC;
   const usdt = hre.network.config.USDT;
   const weth9 = hre.network.config.WETH9;
+  const ti1 = hre.network.config.TI1;
   const swapFactory = hre.network.config.uniswapFactory;
   const swapManagerFactory = await ethers.getContractFactory("UniswapManager");
   const swapManager = await swapManagerFactory.deploy(swapFactory, weth9);
@@ -53,26 +54,23 @@ async function deploy() {
   await tx.wait();
 
   // const planManager = new ethers.Contract(
-  //   "0xadd39eA9a42A51C4666637535B670194Ad121A97", // PLAN_MANAGER_ADDRESS
+  //   "0xa5cbBf4aBa03C4EBDd80D7e710214Aa08E50F7A4", // PLAN_MANAGER_ADDRESS
   //   planManagerAbi,
   //   wallet2
   // );
-
-  const tokens = [
-    "0xE06c2497422b6428350E2E7da24d3FE816166983",
-    "0xb8E688e6fDAf4512f4bE1E43375c124c6BE2abaf",
-  ];
+  console.log("\n");
+  const tokens = [ti1, "0xef68cEE62bc85650Ee96dbBaC7653B1BA103ADc6"];
   const frequencies = [1, 7, 14, 30];
   for (let i = 0; i < tokens.length; i++) {
     for (let j = 0; j < frequencies.length; j++) {
       const result = await planManager.callStatic.createPoolIfNecessary({
-        token0: "0xD3F4aB2AA30a4B9254476b8e35536f218D2C10cA",
+        token0: usdt,
         token1: tokens[i],
         frequency: frequencies[j],
       });
       console.log(result);
       await planManager.createPoolIfNecessary({
-        token0: "0xD3F4aB2AA30a4B9254476b8e35536f218D2C10cA",
+        token0: usdt,
         token1: tokens[i],
         frequency: frequencies[j],
       });
@@ -108,14 +106,10 @@ async function deploy() {
 
   await hre.run("verify:verify", {
     address: planManagerDeployed.address,
-<<<<<<< HEAD
-    constructorArguments: [factoryDeployed.address],
-=======
     constructorArguments: [
       factoryDeployed.address,
       nftDescriptorDeployed.address,
     ],
->>>>>>> d83c531 (Feature/nft descriptor (#3))
   });
 }
 
