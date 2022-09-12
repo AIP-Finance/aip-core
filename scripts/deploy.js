@@ -22,14 +22,26 @@ async function deploy() {
   const factory = await factoryFactory.deploy();
   const factoryDeployed = await factory.deployed();
   console.log("factoryAddress:", factoryDeployed.address);
+
+  const nftDescriptorFactory = await ethers.getContractFactory(
+    "NonfungibleTokenPlanDescriptor"
+  );
+
+  const nftDescriptor = await nftDescriptorFactory.deploy(weth9);
+  const nftDescriptorDeployed = await nftDescriptor.deployed();
+  console.log("nftDescriptorAddress:", nftDescriptorDeployed.address);
+
   const planManagerFactory = await ethers.getContractFactory(
     "NonfungiblePlanManager"
   );
-  const planManager = await planManagerFactory.deploy(factoryDeployed.address);
+  const planManager = await planManagerFactory.deploy(
+    factoryDeployed.address,
+    nftDescriptorDeployed.address
+  );
   const planManagerDeployed = await planManager.deployed();
   console.log("planManagerAddress:", planManagerDeployed.address);
 
-  await factory.enable(
+  const tx = await factory.enable(
     swapManagerDeployed.address,
     planManagerDeployed.address,
     dai,
@@ -37,6 +49,8 @@ async function deploy() {
     usdt,
     weth9
   );
+
+  await tx.wait();
 
   // const planManager = new ethers.Contract(
   //   "0xadd39eA9a42A51C4666637535B670194Ad121A97", // PLAN_MANAGER_ADDRESS
@@ -88,8 +102,20 @@ async function deploy() {
   });
 
   await hre.run("verify:verify", {
+    address: nftDescriptorDeployed.address,
+    constructorArguments: [weth9],
+  });
+
+  await hre.run("verify:verify", {
     address: planManagerDeployed.address,
+<<<<<<< HEAD
     constructorArguments: [factoryDeployed.address],
+=======
+    constructorArguments: [
+      factoryDeployed.address,
+      nftDescriptorDeployed.address,
+    ],
+>>>>>>> d83c531 (Feature/nft descriptor (#3))
   });
 }
 

@@ -646,16 +646,6 @@ describe("NonfungiblePlanManager", () => {
         "Nothing to claim"
       );
     });
-    it("fails if investor is not NFT owner", async () => {
-      await subscribe(investor1, tickAmount, ticks);
-      await pool.trigger();
-      await planManager
-        .connect(investor1)
-        .transferFrom(investor1.address, investor2.address, 1);
-      await expect(planManager.connect(investor1).claim(1)).to.be.revertedWith(
-        "Locked"
-      );
-    });
   });
 
   describe("#extend", () => {
