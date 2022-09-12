@@ -14,7 +14,7 @@ contract AipPoolDeployer is IAipPoolDeployer {
         address WETH9;
         address token0;
         address token1;
-        uint24 frequency;
+        uint8 frequency;
     }
 
     Parameters public override parameters;
@@ -26,7 +26,7 @@ contract AipPoolDeployer is IAipPoolDeployer {
         address WETH9,
         address token0,
         address token1,
-        uint24 frequency
+        uint8 frequency
     ) internal returns (address pool) {
         parameters = Parameters({
             factory: factory,

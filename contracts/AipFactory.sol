@@ -18,7 +18,7 @@ contract AipFactory is IAipFactory, AipPoolDeployer, NoDelegateCall {
     bool public override enabled;
 
     mapping(address => PoolAddress.PoolInfo) public override getPoolInfo;
-    mapping(address => mapping(address => mapping(uint24 => address)))
+    mapping(address => mapping(address => mapping(uint8 => address)))
         public
         override getPool;
 
@@ -30,7 +30,7 @@ contract AipFactory is IAipFactory, AipPoolDeployer, NoDelegateCall {
     function createPool(
         address token0,
         address token1,
-        uint24 frequency
+        uint8 frequency
     ) external override noDelegateCall returns (address pool) {
         require(enabled, "Not enabled");
         require(

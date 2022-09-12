@@ -23,13 +23,13 @@ contract AipPool is IAipPool, ReentrancyGuard {
     address public override rewardOperator;
     address public immutable override token0;
     address public immutable override token1;
-    uint24 public immutable override frequency;
-    uint24 public override swapFee = 3000;
-    uint24 public override swapWETH9Fee = 3000;
-    uint24 private constant TIME_UNIT = 60;
+    uint8 public immutable override frequency;
+    uint16 public override swapFee = 3000;
+    uint16 public override swapWETH9Fee = 3000;
+    uint16 private constant PROTOCOL_FEE = 1000;
+    uint8 private constant TIME_UNIT = 60;
     uint24 private constant PROCESSING_GAS = 400000;
-    uint24 private constant PROTOCOL_FEE = 1000;
-    uint256 private constant MIN_TICK_AMOUNT = 10 * 1e18;
+    uint64 private constant MIN_TICK_AMOUNT = 10 * 1e18;
 
     uint256 private _nextPlanIndex = 1;
     uint256 private _nextTickIndex = 1;
@@ -171,7 +171,7 @@ contract AipPool is IAipPool, ReentrancyGuard {
         override
         returns (
             uint256 swapAmount1,
-            uint256 claimedAmount1,
+            uint256 withdrawnAmount1,
             uint256 ticks,
             uint256 remainingTicks,
             uint256 startedTime,
@@ -189,7 +189,7 @@ contract AipPool is IAipPool, ReentrancyGuard {
                 plan.startTick,
                 plan.endTick
             );
-            claimedAmount1 = plan.claimedAmount1;
+            withdrawnAmount1 = plan.withdrawnAmount1;
             uint256 period = frequency * TIME_UNIT;
             if (plan.endTick > lastTriggerTick) {
                 if (lastTriggerTime > 0) {
@@ -219,7 +219,7 @@ contract AipPool is IAipPool, ReentrancyGuard {
         plan.index = planIndex;
         plan.investor = investor;
         plan.tickAmount0 = tickAmount0;
-        plan.claimedAmount1 = 0;
+        plan.withdrawnAmount1 = 0;
         plan.startTick = _nextTickIndex;
         plan.endTick = _nextTickIndex + ticks - 1;
         mapping(uint256 => uint256) storage tickVolumes0 = _tickVolumes0;
@@ -263,7 +263,7 @@ contract AipPool is IAipPool, ReentrancyGuard {
         emit Extend(planIndex, oldEndTick, plan.endTick);
     }
 
-    function claim(uint256 planIndex)
+    function withdraw(uint256 planIndex)
         external
         override
         isNotLocked(planIndex)
@@ -276,13 +276,13 @@ contract AipPool is IAipPool, ReentrancyGuard {
             plan.startTick,
             plan.endTick
         );
-        received1 = amount1 - plan.claimedAmount1;
-        plan.claimedAmount1 += received1;
-        require(received1 > 0, "Nothing to claim");
+        received1 = amount1 - plan.withdrawnAmount1;
+        plan.withdrawnAmount1 += received1;
+        require(received1 > 0, "Nothing to withdraw");
         uint256 balance1Before = balance1();
         TransferHelper.safeTransfer(token1, plan.investor, received1);
         require(balance1Before - received1 <= balance1(), "C1");
-        emit Claim(planIndex, received1);
+        emit Withdraw(planIndex, received1);
     }
 
     function unsubscribe(uint256 planIndex, bytes calldata data)
@@ -291,8 +291,9 @@ contract AipPool is IAipPool, ReentrancyGuard {
         nonReentrant
         returns (uint256 received0, uint256 received1)
     {
+        address receiver = IAipBurnCallback(planManager).aipBurnCallback(data);
+        require(receiver != address(0));
         PlanInfo storage plan = plans[planIndex];
-        require(plan.endTick >= _nextTickIndex, "Finished");
         if (plan.endTick >= _nextTickIndex) {
             uint256 oldEndTick = plan.endTick;
             plan.endTick = _nextTickIndex - 1;
@@ -311,22 +312,21 @@ contract AipPool is IAipPool, ReentrancyGuard {
                 plan.startTick,
                 plan.endTick
             );
-            received1 = amount1 - plan.claimedAmount1;
-            plan.claimedAmount1 += received1;
+            received1 = amount1 - plan.withdrawnAmount1;
+            plan.withdrawnAmount1 += received1;
         }
-
-        address receiver = IAipBurnCallback(planManager).aipBurnCallback(data);
-        require(receiver != address(0));
-
         uint256 balance0Before = balance0();
         uint256 balance1Before = balance1();
 
-        TransferHelper.safeTransfer(token0, receiver, received0);
+        if (received0 > 0) {
+            TransferHelper.safeTransfer(token0, receiver, received0);
+            require(balance0Before - received0 <= balance0(), "U0");
+        }
         if (received1 > 0) {
             TransferHelper.safeTransfer(token1, receiver, received1);
             require(balance1Before - received1 <= balance1(), "U1");
         }
-        require(balance0Before - received0 <= balance0(), "U0");
+
         emit Unsubscribe(planIndex, received0, received1);
     }
 
@@ -387,7 +387,7 @@ contract AipPool is IAipPool, ReentrancyGuard {
         emit Trigger(tickIndex, amount0, amount1, triggerFee0, protocolFee0);
     }
 
-    function setSwapFee(uint24 _swapFee, uint24 _swapWETH9Fee)
+    function setSwapFee(uint16 _swapFee, uint16 _swapWETH9Fee)
         external
         override
         nonReentrant
@@ -416,7 +416,6 @@ contract AipPool is IAipPool, ReentrancyGuard {
     function claimReward(uint256 planIndex)
         external
         override
-        isNotLocked(planIndex)
         nonReentrant
         returns (
             address token,

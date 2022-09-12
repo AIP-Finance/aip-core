@@ -8,7 +8,7 @@ interface IAipFactory {
     event PoolCreated(
         address token0,
         address token1,
-        uint24 frequency,
+        uint8 frequency,
         address pool
     );
 
@@ -43,19 +43,19 @@ interface IAipFactory {
         returns (
             address,
             address,
-            uint24
+            uint8
         );
 
     function getPool(
         address token0,
         address token1,
-        uint24 frequency
+        uint8 frequency
     ) external view returns (address pool);
 
     function createPool(
         address token0,
         address token1,
-        uint24 frequency
+        uint8 frequency
     ) external returns (address pool);
 
     function enable(

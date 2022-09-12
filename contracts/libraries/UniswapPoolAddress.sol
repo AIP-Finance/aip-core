@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.0;
+pragma solidity ^0.8.0;
 
 /// @title Provides functions for deriving a pool address from the factory, tokens, and the fee
 library UniswapPoolAddress {

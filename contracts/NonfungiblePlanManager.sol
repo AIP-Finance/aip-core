@@ -7,6 +7,7 @@ import "./interfaces/IAipPoolDeployer.sol";
 import "./interfaces/IERC20.sol";
 import "./interfaces/IAipPool.sol";
 import "./interfaces/IAipFactory.sol";
+import "./interfaces/INonfungibleTokenPlanDescriptor.sol";
 import "./interfaces/INonfungiblePlanManager.sol";
 import "./interfaces/IERC721Access.sol";
 import "./interfaces/callback/IAipSubscribeCallback.sol";
@@ -26,24 +27,43 @@ contract NonfungiblePlanManager is
     IAipBurnCallback
 {
     address public immutable override factory;
+    address private immutable _tokenDescriptor;
     uint256 private _nextId = 1;
-    mapping(address => mapping(address => mapping(uint24 => mapping(uint256 => uint256))))
+    mapping(address => mapping(address => mapping(uint8 => mapping(uint256 => uint256))))
         public
         override getTokenId;
 
     mapping(uint256 => Plan) private _plans;
     mapping(address => uint256[]) private _investorPlans;
 
-    constructor(address _factory)
+    constructor(address _factory, address _tokenDescriptor_)
         ERC721Permit("Aip Plan NFT", "AIP-PLAN", "1")
     {
         factory = _factory;
+        _tokenDescriptor = _tokenDescriptor_;
     }
 
     modifier isAuthorizedForToken(uint256 tokenId) {
         require(_isApprovedOrOwner(msg.sender, tokenId), "Not approved");
         _;
     }
+
+    function tokenURI(uint256 tokenId)
+        public
+        view
+        override(ERC721)
+        returns (string memory)
+    {
+        require(_exists(tokenId));
+        return
+            INonfungibleTokenPlanDescriptor(_tokenDescriptor).tokenURI(
+                this,
+                tokenId
+            );
+    }
+
+    // save bytecode by removing implementation of unused method
+    function _baseURI() internal pure override returns (string memory) {}
 
     struct SubscribeCallbackData {
         PoolAddress.PoolInfo poolInfo;
@@ -114,13 +134,13 @@ contract NonfungiblePlanManager is
         return _investorPlans[addr];
     }
 
-    function getPlan(uint256 planIndex)
+    function getPlan(uint256 tokenId)
         public
         view
         override
         returns (Plan memory plan, PlanStatistics memory statistics)
     {
-        plan = _plans[planIndex];
+        plan = _plans[tokenId];
         PoolAddress.PoolInfo memory poolInfo = PoolAddress.PoolInfo({
             token0: plan.token0,
             token1: plan.token1,
@@ -129,7 +149,7 @@ contract NonfungiblePlanManager is
         IAipPool pool = IAipPool(PoolAddress.computeAddress(factory, poolInfo));
         (
             statistics.swapAmount1,
-            statistics.claimedAmount1,
+            statistics.withdrawnAmount1,
             statistics.ticks,
             statistics.remainingTicks,
             statistics.startedTime,
@@ -178,7 +198,7 @@ contract NonfungiblePlanManager is
                 SubscribeCallbackData({poolInfo: poolInfo, payer: msg.sender})
             )
         );
-        _mint(msg.sender, (tokenId = _nextId++));
+        _mint(params.investor, (tokenId = _nextId++));
         _plans[tokenId] = Plan({
             nonce: 0,
             operator: address(0),
@@ -241,7 +261,7 @@ contract NonfungiblePlanManager is
             );
     }
 
-    function claim(uint256 tokenId)
+    function withdraw(uint256 tokenId)
         external
         override
         returns (uint256 received1)
@@ -254,7 +274,7 @@ contract NonfungiblePlanManager is
             frequency: plan.frequency
         });
         IAipPool pool = IAipPool(PoolAddress.computeAddress(factory, poolInfo));
-        return pool.claim(plan.index);
+        return pool.withdraw(plan.index);
     }
 
     function claimReward(uint256 tokenId)

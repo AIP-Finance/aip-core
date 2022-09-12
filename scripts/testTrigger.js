@@ -22,7 +22,7 @@ async function main() {
   // console.log(tx);
 
   poolAddress = getCreate2Address(
-    "0x65170bC4066da2c2A6DCb4441E02A927fE6E9d59",
+    "0x1Df28F18341dA507d985D1341Afc69A810404389",
     [
       "0xD3F4aB2AA30a4B9254476b8e35536f218D2C10cA",
       "0xE06c2497422b6428350E2E7da24d3FE816166983",

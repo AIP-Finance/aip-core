@@ -10,15 +10,14 @@ interface INonfungiblePlanManager {
         address investor;
         address token0;
         address token1;
-        uint24 frequency;
+        uint8 frequency;
         uint256 index;
         uint256 tickAmount;
         uint256 createdTime;
     }
     struct PlanStatistics {
-        uint256 swapAmount0;
         uint256 swapAmount1;
-        uint256 claimedAmount1;
+        uint256 withdrawnAmount1;
         uint256 ticks;
         uint256 remainingTicks;
         uint256 startedTime;
@@ -30,7 +29,7 @@ interface INonfungiblePlanManager {
 
     function plansOf(address) external view returns (uint256[] memory);
 
-    function getPlan(uint256 planIndex)
+    function getPlan(uint256 tokenId)
         external
         view
         returns (Plan memory plan, PlanStatistics memory statistics);
@@ -44,7 +43,7 @@ interface INonfungiblePlanManager {
         address investor;
         address token0;
         address token1;
-        uint24 frequency;
+        uint8 frequency;
         uint256 tickAmount;
         uint256 periods;
     }
@@ -60,7 +59,7 @@ interface INonfungiblePlanManager {
         external
         returns (uint256 received0, uint256 received1);
 
-    function claim(uint256 id) external returns (uint256 received1);
+    function withdraw(uint256 id) external returns (uint256 received1);
 
     function claimReward(uint256 id)
         external

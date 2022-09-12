@@ -12,6 +12,6 @@ interface IAipPoolDeployer {
             address WETH9,
             address token0,
             address token1,
-            uint24 frequency
+            uint8 frequency
         );
 }

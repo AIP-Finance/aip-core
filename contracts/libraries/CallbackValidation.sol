@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.0;
+pragma solidity ^0.8.0;
 
 import "../interfaces/IAipPool.sol";
 import "./PoolAddress.sol";
@@ -9,7 +9,7 @@ library CallbackValidation {
         address factory,
         address token0,
         address token1,
-        uint24 frequency
+        uint8 frequency
     ) internal view returns (IAipPool pool) {
         return
             verifyCallback(
