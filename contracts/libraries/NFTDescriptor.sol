@@ -104,6 +104,7 @@ library NFTDescriptor {
     function decimalString(
         uint256 number,
         uint8 decimals,
+        uint8 numDecimals,
         bool isPercent
     ) private pure returns (string memory) {
         uint8 percentBufferOffset = isPercent ? 1 : 0;
@@ -131,22 +132,28 @@ library NFTDescriptor {
             params.bufferLength = params.sigfigIndex + percentBufferOffset;
         } else {
             // chop all trailing zeros for numbers with decimals
-            params.sigfigs = number / (10**(digits - numSigfigs));
+            params.sigfigs =
+                number /
+                (10**(digits - numSigfigs + (decimals - numDecimals)));
             if (tenPowDecimals > number) {
                 // number is less tahn one
                 // in this case, there may be leading zeros after the decimal place
                 // that need to be added
 
                 // offset leading zeros by two to account for leading '0.'
+
                 params.zerosStartIndex = 2;
                 params.zerosEndIndex = decimals - digits + 2;
-                params.sigfigIndex = numSigfigs + params.zerosEndIndex;
+                params.sigfigIndex =
+                    numSigfigs +
+                    params.zerosEndIndex -
+                    (decimals - numDecimals);
                 params.bufferLength = params.sigfigIndex + percentBufferOffset;
                 params.isLessThanOne = true;
             } else {
                 // In this case, there are digits before and
                 // after the decimal place
-                params.sigfigIndex = numSigfigs + 1;
+                params.sigfigIndex = numSigfigs + 1 - (decimals - numDecimals);
                 params.decimalIndex = digits - decimals + 1;
             }
         }
@@ -282,6 +289,7 @@ library NFTDescriptor {
                     decimalString(
                         params.tickAmount,
                         params.tokenDecimals,
+                        2,
                         false
                     ),
                     " ",
@@ -309,6 +317,7 @@ library NFTDescriptor {
                         : decimalString(
                             params.invested,
                             params.tokenDecimals,
+                            4,
                             false
                         ),
                     " ",
@@ -316,7 +325,7 @@ library NFTDescriptor {
                     ". Ongoing: ",
                     params.ongoing == 0
                         ? "0"
-                        : decimalString(params.ongoing, 18, false),
+                        : decimalString(params.ongoing, 18, 2, false),
                     " ",
                     escapeQuotes(params.stableCoinSymbol)
                 )
@@ -348,16 +357,26 @@ library NFTDescriptor {
             ),
             color1: tokenToColorHex(uint256(uint160(params.tokenAddress)), 136),
             frequency: Strings.toString(params.frequency),
-            tickAmount: decimalString(params.tickAmount, 18, false),
+            tickAmount: decimalString(params.tickAmount, 18, 2, false),
             ongoing: params.ongoing == 0
                 ? "0"
-                : decimalString(params.ongoing, 18, false),
+                : decimalString(params.ongoing, 18, 2, false),
             invested: params.invested == 0
                 ? "0"
-                : decimalString(params.invested, params.tokenDecimals, false),
+                : decimalString(
+                    params.invested,
+                    params.tokenDecimals,
+                    4,
+                    false
+                ),
             withdrawn: params.withdrawn == 0
                 ? "0"
-                : decimalString(params.withdrawn, params.tokenDecimals, false),
+                : decimalString(
+                    params.withdrawn,
+                    params.tokenDecimals,
+                    4,
+                    false
+                ),
             ticks: params.ticks,
             currentTicks: params.ticks - params.remainingTicks
         });
