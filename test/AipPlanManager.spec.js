@@ -25,9 +25,9 @@ let poolAddress;
 
 const PROTOCOL_FEE = 1000; // 1/x
 
-const frequency = 3;
+const frequency = 30;
 const tickAmount0 = 10;
-const ticks = 3;
+const ticks = 100;
 const tickAmount = utils.parseEther(tickAmount0.toString());
 
 const subscribe = (investor, tickAmount, periods) =>
@@ -331,14 +331,12 @@ describe("NonfungiblePlanManager", () => {
       const tokenOwner = await planManager.ownerOf(1);
       expect(tokenOwner).to.eq(investor1.address);
 
-      const tickInfo1 = await pool.tickInfo(1);
-      const tickInfo2 = await pool.tickInfo(2);
-      const tickInfo3 = await pool.tickInfo(3);
-      const tickInfo4 = await pool.tickInfo(4);
-      expect(tickInfo1.amount0).to.equal(tickAmount);
-      expect(tickInfo2.amount0).to.equal(tickAmount);
-      expect(tickInfo3.amount0).to.equal(tickAmount);
-      expect(tickInfo4.amount0).to.equal(0);
+      for (let i = 1; i <= ticks; i++) {
+        const tickInfo = await pool.tickInfo(i);
+        expect(tickInfo.amount0).to.equal(tickAmount);
+      }
+      const tickInfoOut = await pool.tickInfo(ticks + 1);
+      expect(tickInfoOut.amount0).to.equal(0);
     });
 
     it("success with another payer", async () => {
@@ -370,7 +368,11 @@ describe("NonfungiblePlanManager", () => {
         "STF"
       );
     });
-
+    it("fails if over max periods", async () => {
+      await expect(subscribe(investor1, tickAmount, 366)).to.be.revertedWith(
+        "Over max periods"
+      );
+    });
     it("fails if invalid input amount", async () => {
       const minAmount = utils.parseEther("10");
       await expect(
@@ -388,7 +390,7 @@ describe("NonfungiblePlanManager", () => {
       await subscribe(investor1, tickAmount, ticks);
       const result = await swapWithoutProtocolFee(tickAmount);
       await pool.trigger();
-
+      // console.log(await planManager.tokenURI(1));
       const tickInfo = await pool.tickInfo(1);
       expect(tickInfo.amount0).to.equal(tickAmount);
       expect(tickInfo.amount1).to.equal(result.amount1.abs());
@@ -408,13 +410,15 @@ describe("NonfungiblePlanManager", () => {
       let planDetails = await planManager.getPlan(1);
       expect(planDetails.statistics.startedTime).to.equal(now);
       expect(planDetails.statistics.endedTime).to.equal(
-        now + frequency * TIME_UNIT * 2
+        now + frequency * TIME_UNIT * (ticks - 1)
       );
       expect(planDetails.statistics.swapAmount1).to.equal(
         result.amount1.abs().div(2)
       );
-      expect(planDetails.statistics.remainingTicks.toString()).to.equal("2");
-      expect(planDetails.statistics.ticks.toString()).to.equal("3");
+      expect(planDetails.statistics.remainingTicks.toNumber()).to.equal(
+        ticks - 1
+      );
+      expect(planDetails.statistics.ticks.toNumber()).to.equal(ticks);
       expect(planDetails.statistics.lastTriggerTime).to.equal(now);
       await ethers.provider.send("evm_increaseTime", [frequency * TIME_UNIT]);
       await pool.trigger();
@@ -424,12 +428,9 @@ describe("NonfungiblePlanManager", () => {
       await ethers.provider.send("evm_setNextBlockTimestamp", [now2]);
       await pool.trigger();
       planDetails = await planManager.getPlan(1);
-      expect(planDetails.statistics.endedTime).to.equal(now2);
-      await ethers.provider.send("evm_increaseTime", [frequency * TIME_UNIT]);
-      await ethers.provider.send("evm_mine");
-      await pool.trigger();
-      planDetails = await planManager.getPlan(1);
-      expect(planDetails.statistics.endedTime).to.equal(now2);
+      expect(planDetails.statistics.endedTime).to.equal(
+        now2 + frequency * TIME_UNIT * (ticks - 3)
+      );
     });
 
     it("success trigger again", async () => {
@@ -502,7 +503,7 @@ describe("NonfungiblePlanManager", () => {
       const plan = await pool.plans(1);
       const balance0 = await usdt.balanceOf(investor1.address);
       const balance1 = await tokens[1].balanceOf(investor1.address);
-      expect(balance0.sub(balance0Before)).to.equal(tickAmount.mul(2));
+      expect(balance0.sub(balance0Before)).to.equal(tickAmount.mul(ticks - 1));
       expect(balance1.sub(balance1Before)).to.equal(result.amount1.abs());
       expect(plan.endTick).to.equal(1);
 
@@ -529,7 +530,7 @@ describe("NonfungiblePlanManager", () => {
       const plan = await pool.plans(1);
       const balance0 = await usdt.balanceOf(investor2.address);
       const balance1 = await tokens[1].balanceOf(investor2.address);
-      expect(balance0.sub(balance0Before)).to.equal(tickAmount.mul(2));
+      expect(balance0.sub(balance0Before)).to.equal(tickAmount.mul(ticks - 1));
       expect(balance1.sub(balance1Before)).to.equal(result.amount1.abs());
       expect(plan.endTick).to.equal(1);
     });
@@ -558,7 +559,7 @@ describe("NonfungiblePlanManager", () => {
       await pool.trigger();
       await expect(planManager.connect(investor1).burn(1))
         .to.be.emit(pool, "Unsubscribe")
-        .withArgs(1, tickAmount.mul(2), result.amount1.abs());
+        .withArgs(1, tickAmount.mul(ticks - 1), result.amount1.abs());
     });
     it("fails if requester is not approved", async () => {
       await subscribe(investor1, tickAmount, ticks);
@@ -736,6 +737,12 @@ describe("NonfungiblePlanManager", () => {
       await expect(
         planManager.connect(investor1).extend(1, 1)
       ).to.be.revertedWith("STF");
+    });
+    it("fails if over max periods", async () => {
+      await subscribe(investor1, tickAmount, ticks);
+      await expect(
+        planManager.connect(investor1).extend(1, 366 - ticks)
+      ).to.be.revertedWith("Over max periods");
     });
     it("fails if periods invalid", async () => {
       await subscribe(investor1, tickAmount, ticks);

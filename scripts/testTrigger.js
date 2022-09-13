@@ -21,23 +21,27 @@ async function main() {
   // );
   // console.log(tx);
 
-  poolAddress = getCreate2Address(
-    "0x1Df28F18341dA507d985D1341Afc69A810404389",
-    [
-      "0xD3F4aB2AA30a4B9254476b8e35536f218D2C10cA",
-      "0xE06c2497422b6428350E2E7da24d3FE816166983",
-      1,
-    ],
-    poolBytecode
+  // poolAddress = getCreate2Address(
+  //   "0x1Df28F18341dA507d985D1341Afc69A810404389",
+  //   [
+  //     "0xD3F4aB2AA30a4B9254476b8e35536f218D2C10cA",
+  //     "0xE06c2497422b6428350E2E7da24d3FE816166983",
+  //     1,
+  //   ],
+  //   poolBytecode
+  // );
+
+  // console.log("poolAddress", poolAddress);
+
+  const pool = new ethers.Contract(
+    "0x222AF7713BA61dF4105a291D57baA67CB231ec4e",
+    poolAbi,
+    wallet2
   );
-
-  console.log("poolAddress", poolAddress);
-
-  const pool = new ethers.Contract(poolAddress, poolAbi, wallet2);
-  const data = await pool.callStatic.trigger({ gasLimit: 400000 });
+  const data = await pool.callStatic.trigger({ gasLimit: 1000000 });
   console.log(data);
 
-  const tx = await pool.trigger({ gasLimit: 400000 });
+  const tx = await pool.trigger({ gasLimit: 1000000 });
   console.log(tx);
 }
 

@@ -48,6 +48,7 @@ interface IAipPool {
         uint256 index;
         address investor;
         uint256 tickAmount0;
+        uint256 withdrawnIndex;
         uint256 withdrawnAmount1;
         uint256 startTick;
         uint256 endTick;
@@ -88,6 +89,7 @@ interface IAipPool {
             uint256 index,
             address investor,
             uint256 tickAmount0,
+            uint256 withdrawnIndex,
             uint256 withdrawnAmount1,
             uint256 startTick,
             uint256 endTick,

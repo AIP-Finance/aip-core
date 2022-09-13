@@ -13,5 +13,5 @@ npx hardhat node
 npm run pool
 npm run test
 
-npx hardhat run --network testnet scripts/deploy.js
+npx hardhat run --network rinkeby scripts/deploy.js
 ```

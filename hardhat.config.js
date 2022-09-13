@@ -95,8 +95,21 @@ module.exports = {
       chainId: 1337,
       allowUnlimitedContractSize: false,
     },
-    testnet: {
-      url: process.env.TESTNET_NODE_URL,
+    rinkeby: {
+      url: process.env.RINKEBY_NODE_URL,
+      accounts: [
+        `0x${process.env.PRIVATE_KEY_1}`,
+        `0x${process.env.PRIVATE_KEY_2}`,
+      ],
+      DAI: "0xc7AD46e0b8a400Bb3C915120d284AafbA8fc4735",
+      USDC: "0x4DBCdF9B62e891a7cec5A2568C3F4FAF9E8Abe2b",
+      USDT: "0x944c7626b5074F423F4C00aa54b520c4d985578d",
+      TI1: "0x5bfC833BC041DCb65D8294C2DD9C817D71aEa9b8",
+      WETH9: "0xc778417E063141139Fce010982780140Aa0cD5Ab",
+      uniswapFactory: "0x1F98431c8aD98523631AE4a59f267346ea31F984",
+    },
+    ropsten: {
+      url: process.env.ROPSTEN_NODE_URL,
       accounts: [
         `0x${process.env.PRIVATE_KEY_1}`,
         `0x${process.env.PRIVATE_KEY_2}`,
@@ -104,7 +117,7 @@ module.exports = {
       DAI: "0xd6e992c9A794A599DA83812b9D27B14876C25F73",
       USDC: "0xc1A2e73109201214AD9F695eB56B9bC6EC7471cF",
       USDT: "0xD3F4aB2AA30a4B9254476b8e35536f218D2C10cA",
-      UNI: "0xE06c2497422b6428350E2E7da24d3FE816166983",
+      TI1: "0xE06c2497422b6428350E2E7da24d3FE816166983",
       WETH9: "0xc778417E063141139Fce010982780140Aa0cD5Ab",
       uniswapFactory: "0x1F98431c8aD98523631AE4a59f267346ea31F984",
     },

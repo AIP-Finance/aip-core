@@ -27,7 +27,8 @@ contract AipPool is IAipPool, ReentrancyGuard {
     uint16 public override swapFee = 3000;
     uint16 public override swapWETH9Fee = 3000;
     uint16 private constant PROTOCOL_FEE = 1000;
-    uint8 private constant TIME_UNIT = 60;
+    uint16 private constant MAX_TICKS = 365;
+    uint24 private constant TIME_UNIT = 60;
     uint24 private constant PROCESSING_GAS = 400000;
     uint64 private constant MIN_TICK_AMOUNT = 10 * 1e18;
 
@@ -190,7 +191,7 @@ contract AipPool is IAipPool, ReentrancyGuard {
                 plan.endTick
             );
             withdrawnAmount1 = plan.withdrawnAmount1;
-            uint256 period = frequency * TIME_UNIT;
+            uint24 period = TIME_UNIT * frequency;
             if (plan.endTick > lastTriggerTick) {
                 if (lastTriggerTime > 0) {
                     endedTime =
@@ -214,6 +215,7 @@ contract AipPool is IAipPool, ReentrancyGuard {
     ) external override nonReentrant returns (uint256 planIndex) {
         require(tickAmount0 >= MIN_TICK_AMOUNT, "Invalid tick amount");
         require(ticks > 0, "Invalid periods");
+        require(ticks <= MAX_TICKS, "Over max periods");
         planIndex = _nextPlanIndex++;
         PlanInfo storage plan = plans[planIndex];
         plan.index = planIndex;
@@ -249,8 +251,10 @@ contract AipPool is IAipPool, ReentrancyGuard {
         PlanInfo storage plan = plans[planIndex];
         require(plan.endTick >= _nextTickIndex, "Finished");
         require(ticks > 0, "Invalid periods");
+        require(plan.endTick + ticks <= MAX_TICKS, "Over max periods");
         uint256 oldEndTick = plan.endTick;
         plan.endTick = plan.endTick + ticks;
+
         for (uint256 i = oldEndTick + 1; i <= plan.endTick; i++) {
             _tickVolumes0[i] += plan.tickAmount0;
         }
@@ -271,13 +275,18 @@ contract AipPool is IAipPool, ReentrancyGuard {
         returns (uint256 received1)
     {
         PlanInfo storage plan = plans[planIndex];
-        (, uint256 amount1) = _getPlanAmount(
-            plan.tickAmount0,
-            plan.startTick,
-            plan.endTick
-        );
-        received1 = amount1 - plan.withdrawnAmount1;
-        plan.withdrawnAmount1 += received1;
+        uint256 withdrawIndex = plan.withdrawnIndex == 0
+            ? plan.startTick
+            : plan.withdrawnIndex + 1;
+        if (plan.endTick >= withdrawIndex) {
+            (, received1) = _getPlanAmount(
+                plan.tickAmount0,
+                withdrawIndex,
+                plan.endTick
+            );
+            plan.withdrawnAmount1 += received1;
+            plan.withdrawnIndex = _nextTickIndex - 1;
+        }
         require(received1 > 0, "Nothing to withdraw");
         uint256 balance1Before = balance1();
         TransferHelper.safeTransfer(token1, plan.investor, received1);
@@ -306,14 +315,17 @@ contract AipPool is IAipPool, ReentrancyGuard {
                 }
             }
         }
-        if (plan.endTick >= plan.startTick) {
-            (, uint256 amount1) = _getPlanAmount(
+        uint256 withdrawIndex = plan.withdrawnIndex == 0
+            ? plan.startTick
+            : plan.withdrawnIndex + 1;
+        if (plan.endTick >= withdrawIndex) {
+            (, received1) = _getPlanAmount(
                 plan.tickAmount0,
-                plan.startTick,
+                withdrawIndex,
                 plan.endTick
             );
-            received1 = amount1 - plan.withdrawnAmount1;
             plan.withdrawnAmount1 += received1;
+            plan.withdrawnIndex = _nextTickIndex - 1;
         }
         uint256 balance0Before = balance0();
         uint256 balance1Before = balance1();
@@ -342,7 +354,7 @@ contract AipPool is IAipPool, ReentrancyGuard {
         mapping(uint256 => uint256) storage tickTimes = _tickTimes;
         if (tickIndex > 1) {
             require(
-                tickTimes[tickIndex - 1] + frequency * TIME_UNIT <=
+                tickTimes[tickIndex - 1] + TIME_UNIT * frequency <=
                     block.timestamp + 5,
                 "Not yet"
             );

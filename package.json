@@ -2,7 +2,8 @@
   "name": "hardhat-project",
   "scripts": {
     "pool": "npx hardhat run scripts/loadPoolBytecode.js",
-    "deploy:testnet": "npm run pool && npm run test && npx hardhat run --network testnet scripts/deploy.js",
+    "deploy:rinkeby": "npm run pool && npm run test && npx hardhat run --network rinkeby scripts/deploy.js",
+    "deploy:ropsten": "npm run pool && npm run test && npx hardhat run --network ropsten scripts/deploy.js",
     "compile": "hardhat compile",
     "test": "hardhat test",
     "watch": "hardhat watch"
