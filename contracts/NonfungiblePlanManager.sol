@@ -199,6 +199,15 @@ contract NonfungiblePlanManager is
             planIndex
         ] = tokenId;
         _investorPlans[msg.sender].push(tokenId);
+        emit PlanMinted(
+            tokenId,
+            params.owner,
+            params.token0,
+            params.token1,
+            params.frequency,
+            planIndex,
+            params.investor
+        );
     }
 
     function extend(uint256 tokenId, uint256 periods)

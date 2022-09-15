@@ -4,6 +4,15 @@ pragma solidity ^0.8.0;
 import "../libraries/PoolAddress.sol";
 
 interface INonfungiblePlanManager {
+    event PlanMinted(
+        uint256 tokenId,
+        address owner,
+        address token0,
+        address token1,
+        uint8 frequency,
+        uint256 planIndex,
+        address investor
+    );
     struct Plan {
         uint96 nonce;
         address operator;

@@ -355,7 +355,21 @@ describe("NonfungiblePlanManager", () => {
       expect(planDetails.plan.investor).equal(investor1.address);
     });
 
-    it("emits event", async () => {
+    it("emits plan minted event", async () => {
+      await expect(subscribe(investor1, tickAmount, ticks))
+        .to.be.emit(planManager, "PlanMinted")
+        .withArgs(
+          1,
+          investor1.address,
+          usdt.address,
+          tokens[1].address,
+          frequency,
+          1,
+          investor1.address
+        );
+    });
+
+    it("emits subscribe event", async () => {
       await expect(subscribe(investor1, tickAmount, ticks))
         .to.be.emit(pool, "Subscribe")
         .withArgs(1, planManager.address, tickAmount, 1, ticks);
