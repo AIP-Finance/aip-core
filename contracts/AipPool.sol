@@ -77,11 +77,9 @@ contract AipPool is IAipPool, ReentrancyGuard {
         uint256 endTick
     ) private view returns (uint256 amount0, uint256 amount1) {
         uint256 currentEndTick = _getCurrentEndTick(endTick);
-        mapping(uint256 => uint256) storage tickVolumes1 = _tickVolumes1;
-        mapping(uint256 => uint256) storage tickVolumes0 = _tickVolumes0;
         for (uint256 i = startTick; i <= currentEndTick; i++) {
             amount0 += tickAmount0;
-            amount1 += (tickVolumes1[i] * tickAmount0) / tickVolumes0[i];
+            amount1 += (_tickVolumes1[i] * tickAmount0) / _tickVolumes0[i];
         }
     }
 
@@ -200,19 +198,22 @@ contract AipPool is IAipPool, ReentrancyGuard {
         bytes calldata data
     ) external override nonReentrant returns (uint256 planIndex) {
         require(tickAmount0 >= MIN_TICK_AMOUNT, "Invalid tick amount");
-        require(ticks > 0, "Invalid periods");
-        require(ticks <= MAX_TICKS, "Over max periods");
+        require(ticks > 0 && ticks <= MAX_TICKS, "Invalid periods");
         planIndex = _nextPlanIndex++;
-        PlanInfo storage plan = plans[planIndex];
-        plan.index = planIndex;
-        plan.owner = owner;
-        plan.tickAmount0 = tickAmount0;
-        plan.withdrawnAmount1 = 0;
-        plan.startTick = _nextTickIndex;
-        plan.endTick = _nextTickIndex + ticks - 1;
-        mapping(uint256 => uint256) storage tickVolumes0 = _tickVolumes0;
+        PlanInfo memory plan = PlanInfo({
+            index: planIndex,
+            owner: owner,
+            tickAmount0: tickAmount0,
+            withdrawnIndex: 0,
+            withdrawnAmount1: 0,
+            startTick: _nextTickIndex,
+            endTick: _nextTickIndex + ticks - 1,
+            claimedRewardIndex: 0,
+            claimedRewardAmount: 0
+        });
+        plans[planIndex] = plan;
         for (uint256 i = plan.startTick; i <= plan.endTick; i++) {
-            tickVolumes0[i] += tickAmount0;
+            _tickVolumes0[i] += tickAmount0;
         }
         uint256 balance0Before = balance0();
         IAipSubscribeCallback(msg.sender).aipSubscribeCallback(
@@ -237,8 +238,10 @@ contract AipPool is IAipPool, ReentrancyGuard {
         PlanInfo storage plan = plans[planIndex];
         require(msg.sender == plan.owner);
         require(plan.endTick >= _nextTickIndex, "Finished");
-        require(ticks > 0, "Invalid periods");
-        require(plan.endTick + ticks <= MAX_TICKS, "Over max periods");
+        require(
+            ticks > 0 && plan.endTick + ticks <= MAX_TICKS,
+            "Invalid periods"
+        );
         uint256 oldEndTick = plan.endTick;
         plan.endTick = plan.endTick + ticks;
 
@@ -254,7 +257,7 @@ contract AipPool is IAipPool, ReentrancyGuard {
         emit Extend(planIndex, oldEndTick, plan.endTick);
     }
 
-    function withdraw(uint256 planIndex)
+    function withdraw(uint256 planIndex, address receiver)
         external
         override
         nonReentrant
@@ -276,7 +279,7 @@ contract AipPool is IAipPool, ReentrancyGuard {
         }
         require(received1 > 0, "Nothing to withdraw");
         uint256 balance1Before = balance1();
-        TransferHelper.safeTransfer(token1, plan.owner, received1);
+        TransferHelper.safeTransfer(token1, receiver, received1);
         require(balance1Before - received1 <= balance1(), "C1");
         emit Withdraw(planIndex, received1);
     }
@@ -294,11 +297,9 @@ contract AipPool is IAipPool, ReentrancyGuard {
             uint256 oldEndTick = plan.endTick;
             plan.endTick = _nextTickIndex - 1;
             received0 = plan.tickAmount0 * (oldEndTick - plan.endTick);
-
-            mapping(uint256 => uint256) storage tickVolumes0 = _tickVolumes0;
             if (plan.endTick + 1 <= oldEndTick) {
                 for (uint256 i = plan.endTick + 1; i <= oldEndTick; i++) {
-                    tickVolumes0[i] -= plan.tickAmount0;
+                    _tickVolumes0[i] -= plan.tickAmount0;
                 }
             }
         }
@@ -338,15 +339,14 @@ contract AipPool is IAipPool, ReentrancyGuard {
         uint256 tickIndex = _nextTickIndex++;
         amount0 = _tickVolumes0[tickIndex];
         require(amount0 > 0, "Tick volume equal 0");
-        mapping(uint256 => uint256) storage tickTimes = _tickTimes;
         if (tickIndex > 1) {
             require(
-                tickTimes[tickIndex - 1] + TIME_UNIT * frequency <=
+                _tickTimes[tickIndex - 1] + TIME_UNIT * frequency <=
                     block.timestamp + 5,
                 "Not yet"
             );
         }
-        tickTimes[tickIndex] = block.timestamp;
+        _tickTimes[tickIndex] = block.timestamp;
         uint256 gasFee = tx.gasprice * PROCESSING_GAS;
         uint256 _price = IAipSwapManager(swapManager).poolPrice(
             token0,
@@ -412,7 +412,7 @@ contract AipPool is IAipPool, ReentrancyGuard {
         swapWETH9Fee = _swapWETH9Fee;
     }
 
-    function claimReward(uint256 planIndex)
+    function claimReward(uint256 planIndex, address receiver)
         external
         override
         nonReentrant
@@ -448,7 +448,7 @@ contract AipPool is IAipPool, ReentrancyGuard {
                 uint256 balanceRewardBefore = balanceReward();
                 TransferHelper.safeTransfer(
                     rewardToken,
-                    plan.owner,
+                    receiver,
                     unclaimedAmount
                 );
                 require(

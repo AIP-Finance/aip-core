@@ -27,6 +27,13 @@ interface INonfungiblePlanManager {
 
     function factory() external view returns (address);
 
+    function getTokenId(
+        address token0,
+        address token1,
+        uint8 frequency,
+        uint256 planIndex
+    ) external view returns (uint256);
+
     function plansOf(address) external view returns (uint256[] memory);
 
     function getPlan(uint256 tokenId)

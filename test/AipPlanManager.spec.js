@@ -314,7 +314,7 @@ describe("NonfungiblePlanManager", () => {
       expect(balance0Before.sub(balance0)).to.equal(tickAmount.mul(ticks));
       const poolPlan = await pool.plans(1);
       expect(poolPlan.index.toNumber()).equal(1);
-      expect(poolPlan.investor).equal(investor1.address);
+      expect(poolPlan.owner).equal(planManager.address);
       expect(poolPlan.tickAmount0).equal(tickAmount);
       expect(poolPlan.withdrawnAmount1).equal(0);
       expect(poolPlan.startTick).equal(1);
@@ -359,7 +359,7 @@ describe("NonfungiblePlanManager", () => {
     it("emits event", async () => {
       await expect(subscribe(investor1, tickAmount, ticks))
         .to.be.emit(pool, "Subscribe")
-        .withArgs(1, investor1.address, tickAmount, 1, ticks);
+        .withArgs(1, planManager.address, tickAmount, 1, ticks);
     });
 
     it("fails if insufficient usdt funds", async () => {
@@ -370,9 +370,12 @@ describe("NonfungiblePlanManager", () => {
         "STF"
       );
     });
-    it("fails if over max periods", async () => {
+    it("fails if invalid periods", async () => {
       await expect(subscribe(investor1, tickAmount, 366)).to.be.revertedWith(
-        "Over max periods"
+        "Invalid periods"
+      );
+      await expect(subscribe(investor1, tickAmount, 0)).to.be.revertedWith(
+        "Invalid periods"
       );
     });
     it("fails if invalid input amount", async () => {
@@ -380,9 +383,6 @@ describe("NonfungiblePlanManager", () => {
       await expect(
         subscribe(investor1, minAmount.sub(1), ticks)
       ).to.be.revertedWith("Invalid tick amount");
-      await expect(subscribe(investor1, tickAmount, 0)).to.be.revertedWith(
-        "Invalid periods"
-      );
     });
   });
 
@@ -740,16 +740,13 @@ describe("NonfungiblePlanManager", () => {
         planManager.connect(investor1).extend(1, 1)
       ).to.be.revertedWith("STF");
     });
-    it("fails if over max periods", async () => {
-      await subscribe(investor1, tickAmount, ticks);
-      await expect(
-        planManager.connect(investor1).extend(1, 366 - ticks)
-      ).to.be.revertedWith("Over max periods");
-    });
-    it("fails if periods invalid", async () => {
+    it("fails if invalid periods", async () => {
       await subscribe(investor1, tickAmount, ticks);
       await expect(
         planManager.connect(investor1).extend(1, 0)
+      ).to.be.revertedWith("Invalid periods");
+      await expect(
+        planManager.connect(investor1).extend(1, 366 - ticks)
       ).to.be.revertedWith("Invalid periods");
     });
     it("fails if plan finished", async () => {

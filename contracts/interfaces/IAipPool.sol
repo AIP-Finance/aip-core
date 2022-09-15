@@ -137,7 +137,9 @@ interface IAipPool {
         bytes calldata data
     ) external returns (uint256 index);
 
-    function withdraw(uint256 planIndex) external returns (uint256 received1);
+    function withdraw(uint256 planIndex, address receiver)
+        external
+        returns (uint256 received1);
 
     function extend(
         uint256 planIndex,
@@ -155,7 +157,7 @@ interface IAipPool {
         external
         returns (address swapPool, address swapWETH9Pool);
 
-    function claimReward(uint256 planIndex)
+    function claimReward(uint256 planIndex, address receiver)
         external
         returns (
             address token,
