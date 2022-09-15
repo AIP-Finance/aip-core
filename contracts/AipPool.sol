@@ -15,7 +15,6 @@ import "./libraries/TransferHelper.sol";
 contract AipPool is IAipPool, ReentrancyGuard {
     address public immutable override factory;
     address public immutable override swapManager;
-    address public immutable override planManager;
     address public immutable override WETH9;
     address public override rewardToken;
     address public override rewardOperator;
@@ -45,7 +44,6 @@ contract AipPool is IAipPool, ReentrancyGuard {
         (
             factory,
             swapManager,
-            planManager,
             WETH9,
             token0,
             token1,

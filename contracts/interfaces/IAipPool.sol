@@ -60,8 +60,6 @@ interface IAipPool {
 
     function swapManager() external view returns (address);
 
-    function planManager() external view returns (address);
-
     function WETH9() external view returns (address);
 
     function rewardToken() external view returns (address);

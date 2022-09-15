@@ -55,7 +55,6 @@ describe("PoolReward", () => {
 
     await factory.enable(
       swapManager.address,
-      planManager.address,
       dai.address,
       usdc.address,
       usdt.address,

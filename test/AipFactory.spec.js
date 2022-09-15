@@ -110,7 +110,6 @@ describe("AipFactory", () => {
     const enableFactory = async () =>
       await factory.enable(
         swapManager.address,
-        planManager.address,
         dai.address,
         usdc.address,
         usdt.address,
@@ -204,7 +203,6 @@ describe("AipFactory", () => {
     it("success", async () => {
       await factory.enable(
         swapManager.address,
-        planManager.address,
         dai.address,
         usdc.address,
         usdt.address,
@@ -223,7 +221,6 @@ describe("AipFactory", () => {
           .connect(other)
           .enable(
             swapManager.address,
-            planManager.address,
             dai.address,
             usdc.address,
             usdt.address,
@@ -236,7 +233,6 @@ describe("AipFactory", () => {
       await expect(
         factory.enable(
           swapManager.address,
-          planManager.address,
           dai.address,
           usdc.address,
           usdt.address,
@@ -246,7 +242,6 @@ describe("AipFactory", () => {
         .to.emit(factory, "Enabled")
         .withArgs(
           swapManager.address,
-          planManager.address,
           dai.address,
           usdc.address,
           usdt.address,
@@ -257,7 +252,6 @@ describe("AipFactory", () => {
     it("fails if calls again", async () => {
       await factory.enable(
         swapManager.address,
-        planManager.address,
         dai.address,
         usdc.address,
         usdt.address,
@@ -266,7 +260,6 @@ describe("AipFactory", () => {
       await expect(
         factory.enable(
           swapManager.address,
-          planManager.address,
           dai.address,
           usdc.address,
           usdt.address,
@@ -278,7 +271,6 @@ describe("AipFactory", () => {
       await expect(
         factory.enable(
           constants.AddressZero,
-          planManager.address,
           dai.address,
           usdc.address,
           usdt.address,
@@ -288,7 +280,6 @@ describe("AipFactory", () => {
       await expect(
         factory.enable(
           swapManager.address,
-          planManager.address,
           constants.AddressZero,
           usdc.address,
           usdt.address,
@@ -298,7 +289,6 @@ describe("AipFactory", () => {
       await expect(
         factory.enable(
           swapManager.address,
-          planManager.address,
           dai.address,
           constants.AddressZero,
           usdt.address,
@@ -308,7 +298,6 @@ describe("AipFactory", () => {
       await expect(
         factory.enable(
           swapManager.address,
-          planManager.address,
           dai.address,
           usdc.address,
           constants.AddressZero,
@@ -318,7 +307,6 @@ describe("AipFactory", () => {
       await expect(
         factory.enable(
           swapManager.address,
-          planManager.address,
           dai.address,
           usdc.address,
           usdt.address,

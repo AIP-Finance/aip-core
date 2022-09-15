@@ -90,7 +90,6 @@ describe("NonfungiblePlanManager", () => {
 
     await factory.enable(
       swapManager.address,
-      planManager.address,
       dai.address,
       usdc.address,
       usdt.address,
