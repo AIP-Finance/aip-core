@@ -432,11 +432,9 @@ contract AipPool is IAipPool, ReentrancyGuard {
                 : plan.claimedRewardIndex + 1;
             if (currentEndTick >= currentStartTick) {
                 for (uint256 i = currentStartTick; i <= currentEndTick; i++) {
-                    uint256 rewardAmount = _tickRewards[i];
-                    uint256 paymentAmount0 = _tickVolumes0[i];
                     unclaimedAmount +=
-                        (rewardAmount * plan.tickAmount0) /
-                        paymentAmount0;
+                        (_tickRewards[i] * plan.tickAmount0) /
+                        _tickVolumes0[i];
                 }
             }
 
