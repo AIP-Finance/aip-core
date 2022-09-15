@@ -34,10 +34,11 @@ const subscribe = (investor, tickAmount, periods) =>
   planManager
     .connect(investor)
     .mint([
-      investor.address,
       usdt.address,
       tokens[1].address,
       frequency,
+      investor.address,
+      investor.address,
       tickAmount,
       periods,
     ]);
@@ -343,10 +344,11 @@ describe("NonfungiblePlanManager", () => {
       await planManager
         .connect(investor2)
         .mint([
-          investor1.address,
           usdt.address,
           tokens[1].address,
           frequency,
+          investor1.address,
+          investor1.address,
           tickAmount,
           3,
         ]);
@@ -390,7 +392,7 @@ describe("NonfungiblePlanManager", () => {
       await subscribe(investor1, tickAmount, ticks);
       const result = await swapWithoutProtocolFee(tickAmount);
       await pool.trigger();
-      // console.log(await planManager.tokenURI(1));
+      console.log(await planManager.tokenURI(1));
       const tickInfo = await pool.tickInfo(1);
       expect(tickInfo.amount0).to.equal(tickAmount);
       expect(tickInfo.amount1).to.equal(result.amount1.abs());

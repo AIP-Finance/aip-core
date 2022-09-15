@@ -198,7 +198,7 @@ contract NonfungiblePlanManager is
                 SubscribeCallbackData({poolInfo: poolInfo, payer: msg.sender})
             )
         );
-        _mint(params.investor, (tokenId = _nextId++));
+        _mint(params.owner, (tokenId = _nextId++));
         _plans[tokenId] = Plan({
             nonce: 0,
             operator: address(0),
