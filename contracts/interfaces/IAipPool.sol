@@ -12,7 +12,7 @@ interface IAipPool {
 
     event Subscribe(
         uint256 planIndex,
-        address investor,
+        address owner,
         uint256 tickAmount,
         uint256 startTick,
         uint256 endTick
@@ -46,7 +46,7 @@ interface IAipPool {
 
     struct PlanInfo {
         uint256 index;
-        address investor;
+        address owner;
         uint256 tickAmount0;
         uint256 withdrawnIndex;
         uint256 withdrawnAmount1;
@@ -87,7 +87,7 @@ interface IAipPool {
         view
         returns (
             uint256 index,
-            address investor,
+            address owner,
             uint256 tickAmount0,
             uint256 withdrawnIndex,
             uint256 withdrawnAmount1,
@@ -131,7 +131,7 @@ interface IAipPool {
         );
 
     function subscribe(
-        address investor,
+        address owner,
         uint256 tickAmount0,
         uint256 totalAmount0,
         bytes calldata data
@@ -145,7 +145,7 @@ interface IAipPool {
         bytes calldata data
     ) external;
 
-    function unsubscribe(uint256 planIndex, bytes calldata data)
+    function unsubscribe(uint256 planIndex, address receiver)
         external
         returns (uint256 received0, uint256 received1);
 
