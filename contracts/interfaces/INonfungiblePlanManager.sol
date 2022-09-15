@@ -40,10 +40,11 @@ interface INonfungiblePlanManager {
         returns (address pool);
 
     struct MintParams {
-        address investor;
         address token0;
         address token1;
         uint8 frequency;
+        address investor;
+        address owner;
         uint256 tickAmount;
         uint256 periods;
     }

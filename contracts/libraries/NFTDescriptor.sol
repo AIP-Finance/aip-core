@@ -33,19 +33,21 @@ library NFTDescriptor {
         pure
         returns (string memory)
     {
-        string memory namePartOne = generateNamePartOne(params);
-        string memory namePartTwo = generateNamePartTwo(params);
+        string memory name = generateName(
+            escapeQuotes(params.stableCoinSymbol),
+            escapeQuotes(params.tokenSymbol),
+            params.frequency,
+            params.tickAmount,
+            params.ticks
+        );
         string memory descriptionPartOne = generateDescriptionPartOne(
             escapeQuotes(params.stableCoinSymbol),
             escapeQuotes(params.tokenSymbol),
             addressToString(params.poolAddress)
         );
-        string memory descriptionPartTwo = generateDescriptionPartTwo(
-            params.tokenId.toString(),
-            escapeQuotes(params.stableCoinSymbol),
-            addressToString(params.stableCoinAddress),
-            addressToString(params.tokenAddress),
-            Strings.toString(params.frequency)
+        string memory descriptionPartTwo = generateDescriptionPartTwo(params);
+        string memory descriptionPartThree = generateDescriptionPartThree(
+            params
         );
         string memory image = Base64.encode(bytes(generateSVGImage(params)));
 
@@ -57,11 +59,11 @@ library NFTDescriptor {
                         bytes(
                             abi.encodePacked(
                                 '{"name":"',
-                                namePartOne,
-                                namePartTwo,
+                                name,
                                 '", "description":"',
                                 descriptionPartOne,
                                 descriptionPartTwo,
+                                descriptionPartThree,
                                 '","image": "',
                                 "data:image/svg+xml;base64,",
                                 image,
@@ -239,71 +241,69 @@ library NFTDescriptor {
                     "/",
                     stableCoinSymbol,
                     " pool. ",
-                    "The owner of this NFT can end the plan and withdraw all remaining tokens.\\n",
-                    "\\nPool Address: ",
+                    "The owner of this NFT can end the plan and withdraw all remaining tokens.",
+                    "\\n\\nPool Address: ",
                     poolAddress,
-                    "\\n",
+                    "\\n\\n",
                     tokenSymbol
                 )
             );
     }
 
-    function generateDescriptionPartTwo(
-        string memory tokenId,
+    function generateDescriptionPartTwo(ConstructTokenURIParams memory params)
+        private
+        pure
+        returns (string memory)
+    {
+        return
+            string(
+                abi.encodePacked(
+                    " Address: ",
+                    addressToString(params.tokenAddress),
+                    "\\n\\n",
+                    escapeQuotes(params.stableCoinSymbol),
+                    " Address: ",
+                    addressToString(params.stableCoinAddress),
+                    "\\n\\nFrequency: ",
+                    Strings.toString(params.frequency),
+                    " days",
+                    "\\n\\nToken ID: ",
+                    params.tokenId.toString(),
+                    " - Periods: ",
+                    (params.ticks - params.remainingTicks).toString(),
+                    "/",
+                    params.ticks.toString()
+                )
+            );
+    }
+
+    function generateName(
         string memory stableCoinSymbol,
-        string memory stableCoinAddress,
-        string memory tokenAddress,
-        string memory frequency
+        string memory tokenSymbol,
+        uint8 frequency,
+        uint256 tickAmount,
+        uint256 ticks
     ) private pure returns (string memory) {
         return
             string(
                 abi.encodePacked(
-                    " Address: ",
-                    tokenAddress,
-                    "\\n",
-                    stableCoinSymbol,
-                    " Address: ",
-                    stableCoinAddress,
-                    "\\nFrequency: ",
-                    frequency,
-                    " days",
-                    "\\nToken ID: ",
-                    tokenId,
-                    "\\n\\n",
-                    unicode"⚠️ DISCLAIMER: Due diligence is imperative when assessing this NFT. Make sure token addresses match the expected tokens, as token symbols may be imitated."
-                )
-            );
-    }
-
-    function generateNamePartOne(ConstructTokenURIParams memory params)
-        private
-        pure
-        returns (string memory)
-    {
-        return
-            string(
-                abi.encodePacked(
                     "AIP - Invest ",
-                    escapeQuotes(params.tokenSymbol),
+                    tokenSymbol,
                     " with ",
-                    decimalString(
-                        params.tickAmount,
-                        params.tokenDecimals,
-                        2,
-                        false
-                    ),
+                    decimalString(tickAmount, 18, 2, false),
                     " ",
-                    escapeQuotes(params.stableCoinSymbol),
+                    stableCoinSymbol,
                     " every ",
-                    Strings.toString(params.frequency),
-                    params.frequency == 1 ? " day and " : " days and ",
-                    Strings.toString(params.ticks),
-                    params.ticks > 1 ? " periods" : " period"
+                    Strings.toString(frequency),
+                    frequency > 1 ? " days" : " day",
+                    " and ",
+                    Strings.toString(ticks),
+                    ticks > 1 ? " periods" : " period"
                 )
             );
     }
 
-    function generateNamePartTwo(ConstructTokenURIParams memory params)
+    function generateDescriptionPartThree(ConstructTokenURIParams memory params)
         private
         pure
         returns (string memory)
@@ -311,7 +311,7 @@ library NFTDescriptor {
         return
             string(
                 abi.encodePacked(
-                    " - Invested: ",
+                    "\\n\\nInvested: ",
                     params.invested == 0
                         ? "0"
                         : decimalString(
@@ -322,12 +322,24 @@ library NFTDescriptor {
                         ),
                     " ",
                     escapeQuotes(params.tokenSymbol),
-                    ". Ongoing: ",
+                    " - Withdrawn: ",
+                    params.withdrawn == 0
+                        ? "0"
+                        : decimalString(
+                            params.withdrawn,
+                            params.tokenDecimals,
+                            4,
+                            false
+                        ),
+                    " ",
+                    escapeQuotes(params.tokenSymbol),
+                    " - Ongoing: ",
                     params.ongoing == 0
                         ? "0"
                         : decimalString(params.ongoing, 18, 2, false),
                     " ",
-                    escapeQuotes(params.stableCoinSymbol)
+                    escapeQuotes(params.stableCoinSymbol),
+                    unicode"\\n\\n⚠️ DISCLAIMER: Due diligence is imperative when assessing this NFT. Make sure token addresses match the expected tokens, as token symbols may be imitated."
                 )
             );
     }

@@ -30,10 +30,11 @@ describe("PoolReward", () => {
     planManager
       .connect(other)
       .mint([
-        other.address,
         usdt.address,
         tokens[1].address,
         frequency,
+        other.address,
+        other.address,
         tickAmount,
         3,
       ]);

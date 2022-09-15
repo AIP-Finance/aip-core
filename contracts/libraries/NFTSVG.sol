@@ -174,19 +174,19 @@ library NFTSVG {
     {
         svg = string(
             abi.encodePacked(
-                '<linearGradient id="SVGID_1_" gradientUnits="userSpaceOnUse" x1="-17.7126" y1="34.2906" x2="272.5754" y2="381.9086">',
-                '<stop offset="0" style="stop-color:#',
+                '<radialGradient id="SVGID_1_" cx="199.9981" cy="294.991" r="260.2305" fx="-16.3071" fy="157.6408" gradientTransform="matrix(0.9985 -5.497951e-02 6.211905e-02 1.1281 -18.0226 -26.7835)" gradientUnits="userSpaceOnUse">',
+                '<stop  offset="0.2423" style="stop-color:#',
                 color0,
                 '"/>',
-                '<stop offset="1" style="stop-color:#',
+                '<stop  offset="1" style="stop-color:#',
                 color1,
                 '"/>',
-                "</linearGradient>",
+                "</radialGradient>",
                 '<rect y="167" fill="url(#SVGID_1_)" width="400" height="256"/>',
-                '<path fill="#23262F" opacity="0.68" d="M380,349.9H20v39c0,6.6,5.4,12,12,12h336c6.6,0,12-5.4,12-12V349.9z"/>',
-                '<path fill="#23262F" opacity="0.68" d="M368,245H32c-6.6,0-12,5.4-12,12v39h360v-39C380,250.4,374.6,245,368,245z"/>'
-                '<rect x="20" y="297.3" fill="#23262F" opacity="0.68" width="360" height="51"/>',
-                '<path fill="#23262F" opacity="0.68" d="M364.8,187.5H35.2c-8.4,0-15.2,6.8-15.2,15.2v20.7c0,8.4,6.8,15.2,15.2,15.2',
+                '<path fill="#23262F" opacity="0.5" d="M380,349.9H20v39c0,6.6,5.4,12,12,12h336c6.6,0,12-5.4,12-12V349.9z"/>',
+                '<path fill="#23262F" opacity="0.5" d="M368,245H32c-6.6,0-12,5.4-12,12v39h360v-39C380,250.4,374.6,245,368,245z"/>'
+                '<rect x="20" y="297.3" fill="#23262F" opacity="0.5" width="360" height="51"/>',
+                '<path fill="#23262F" opacity="0.5" d="M364.8,187.5H35.2c-8.4,0-15.2,6.8-15.2,15.2v20.7c0,8.4,6.8,15.2,15.2,15.2',
                 'h329.7c8.4,0,15.2-6.8,15.2-15.2v-20.7C380,194.3,373.2,187.5,364.8,187.5z"/>'
             )
         );
