@@ -12,7 +12,7 @@ interface IAipPool {
 
     event Subscribe(
         uint256 planIndex,
-        address investor,
+        address owner,
         uint256 tickAmount,
         uint256 startTick,
         uint256 endTick
@@ -46,7 +46,7 @@ interface IAipPool {
 
     struct PlanInfo {
         uint256 index;
-        address investor;
+        address owner;
         uint256 tickAmount0;
         uint256 withdrawnIndex;
         uint256 withdrawnAmount1;
@@ -59,8 +59,6 @@ interface IAipPool {
     function factory() external view returns (address);
 
     function swapManager() external view returns (address);
-
-    function planManager() external view returns (address);
 
     function WETH9() external view returns (address);
 
@@ -87,7 +85,7 @@ interface IAipPool {
         view
         returns (
             uint256 index,
-            address investor,
+            address owner,
             uint256 tickAmount0,
             uint256 withdrawnIndex,
             uint256 withdrawnAmount1,
@@ -131,13 +129,21 @@ interface IAipPool {
         );
 
     function subscribe(
-        address investor,
+        address owner,
         uint256 tickAmount0,
         uint256 totalAmount0,
         bytes calldata data
     ) external returns (uint256 index);
 
-    function withdraw(uint256 planIndex) external returns (uint256 received1);
+    function withdraw(uint256 planIndex, address receiver)
+        external
+        returns (uint256 received1);
+
+    function withdrawIn(
+        uint256 planIndex,
+        address receiver,
+        uint256 periods
+    ) external returns (uint256 received1);
 
     function extend(
         uint256 planIndex,
@@ -145,7 +151,7 @@ interface IAipPool {
         bytes calldata data
     ) external;
 
-    function unsubscribe(uint256 planIndex, bytes calldata data)
+    function unsubscribe(uint256 planIndex, address receiver)
         external
         returns (uint256 received0, uint256 received1);
 
@@ -155,7 +161,7 @@ interface IAipPool {
         external
         returns (address swapPool, address swapWETH9Pool);
 
-    function claimReward(uint256 planIndex)
+    function claimReward(uint256 planIndex, address receiver)
         external
         returns (
             address token,

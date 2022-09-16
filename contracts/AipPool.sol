@@ -7,17 +7,14 @@ import "./interfaces/IERC20.sol";
 import "./interfaces/IAipPool.sol";
 import "./interfaces/IAipFactory.sol";
 import "./interfaces/IAipSwapManager.sol";
-import "./interfaces/IERC721Access.sol";
 
 import "./interfaces/callback/IAipSubscribeCallback.sol";
 import "./interfaces/callback/IAipExtendCallback.sol";
-import "./interfaces/callback/IAipBurnCallback.sol";
 import "./libraries/TransferHelper.sol";
 
 contract AipPool is IAipPool, ReentrancyGuard {
     address public immutable override factory;
     address public immutable override swapManager;
-    address public immutable override planManager;
     address public immutable override WETH9;
     address public override rewardToken;
     address public override rewardOperator;
@@ -47,24 +44,11 @@ contract AipPool is IAipPool, ReentrancyGuard {
         (
             factory,
             swapManager,
-            planManager,
             WETH9,
             token0,
             token1,
             frequency
         ) = IAipPoolDeployer(msg.sender).parameters();
-    }
-
-    modifier isNotLocked(uint256 planIndex) {
-        IERC721Access manager = IERC721Access(planManager);
-        uint256 tokenId = manager.getTokenId(
-            token0,
-            token1,
-            frequency,
-            planIndex
-        );
-        require(!manager.isLocked(tokenId), "Locked");
-        _;
     }
 
     modifier onlyFactoryOwner() {
@@ -91,11 +75,9 @@ contract AipPool is IAipPool, ReentrancyGuard {
         uint256 endTick
     ) private view returns (uint256 amount0, uint256 amount1) {
         uint256 currentEndTick = _getCurrentEndTick(endTick);
-        mapping(uint256 => uint256) storage tickVolumes1 = _tickVolumes1;
-        mapping(uint256 => uint256) storage tickVolumes0 = _tickVolumes0;
         for (uint256 i = startTick; i <= currentEndTick; i++) {
             amount0 += tickAmount0;
-            amount1 += (tickVolumes1[i] * tickAmount0) / tickVolumes0[i];
+            amount1 += (_tickVolumes1[i] * tickAmount0) / _tickVolumes0[i];
         }
     }
 
@@ -208,25 +190,28 @@ contract AipPool is IAipPool, ReentrancyGuard {
     }
 
     function subscribe(
-        address investor,
+        address owner,
         uint256 tickAmount0,
         uint256 ticks,
         bytes calldata data
     ) external override nonReentrant returns (uint256 planIndex) {
         require(tickAmount0 >= MIN_TICK_AMOUNT, "Invalid tick amount");
-        require(ticks > 0, "Invalid periods");
-        require(ticks <= MAX_TICKS, "Over max periods");
+        require(ticks > 0 && ticks <= MAX_TICKS, "Invalid periods");
         planIndex = _nextPlanIndex++;
-        PlanInfo storage plan = plans[planIndex];
-        plan.index = planIndex;
-        plan.investor = investor;
-        plan.tickAmount0 = tickAmount0;
-        plan.withdrawnAmount1 = 0;
-        plan.startTick = _nextTickIndex;
-        plan.endTick = _nextTickIndex + ticks - 1;
-        mapping(uint256 => uint256) storage tickVolumes0 = _tickVolumes0;
+        PlanInfo memory plan = PlanInfo({
+            index: planIndex,
+            owner: owner,
+            tickAmount0: tickAmount0,
+            withdrawnIndex: 0,
+            withdrawnAmount1: 0,
+            startTick: _nextTickIndex,
+            endTick: _nextTickIndex + ticks - 1,
+            claimedRewardIndex: 0,
+            claimedRewardAmount: 0
+        });
+        plans[planIndex] = plan;
         for (uint256 i = plan.startTick; i <= plan.endTick; i++) {
-            tickVolumes0[i] += tickAmount0;
+            _tickVolumes0[i] += tickAmount0;
         }
         uint256 balance0Before = balance0();
         IAipSubscribeCallback(msg.sender).aipSubscribeCallback(
@@ -236,7 +221,7 @@ contract AipPool is IAipPool, ReentrancyGuard {
         require(balance0Before + ticks * tickAmount0 <= balance0(), "S");
         emit Subscribe(
             plan.index,
-            plan.investor,
+            plan.owner,
             plan.tickAmount0,
             plan.startTick,
             plan.endTick
@@ -249,9 +234,12 @@ contract AipPool is IAipPool, ReentrancyGuard {
         bytes calldata data
     ) external override nonReentrant {
         PlanInfo storage plan = plans[planIndex];
+        require(msg.sender == plan.owner);
         require(plan.endTick >= _nextTickIndex, "Finished");
-        require(ticks > 0, "Invalid periods");
-        require(plan.endTick + ticks <= MAX_TICKS, "Over max periods");
+        require(
+            ticks > 0 && plan.endTick + ticks <= MAX_TICKS,
+            "Invalid periods"
+        );
         uint256 oldEndTick = plan.endTick;
         plan.endTick = plan.endTick + ticks;
 
@@ -267,14 +255,14 @@ contract AipPool is IAipPool, ReentrancyGuard {
         emit Extend(planIndex, oldEndTick, plan.endTick);
     }
 
-    function withdraw(uint256 planIndex)
+    function withdraw(uint256 planIndex, address receiver)
         external
         override
-        isNotLocked(planIndex)
         nonReentrant
         returns (uint256 received1)
     {
         PlanInfo storage plan = plans[planIndex];
+        require(msg.sender == plan.owner);
         uint256 withdrawIndex = plan.withdrawnIndex == 0
             ? plan.startTick
             : plan.withdrawnIndex + 1;
@@ -289,29 +277,57 @@ contract AipPool is IAipPool, ReentrancyGuard {
         }
         require(received1 > 0, "Nothing to withdraw");
         uint256 balance1Before = balance1();
-        TransferHelper.safeTransfer(token1, plan.investor, received1);
+        TransferHelper.safeTransfer(token1, receiver, received1);
         require(balance1Before - received1 <= balance1(), "C1");
         emit Withdraw(planIndex, received1);
     }
 
-    function unsubscribe(uint256 planIndex, bytes calldata data)
+    function withdrawIn(
+        uint256 planIndex,
+        address receiver,
+        uint256 periods
+    ) external override nonReentrant returns (uint256 received1) {
+        PlanInfo storage plan = plans[planIndex];
+        require(msg.sender == plan.owner);
+        uint256 withdrawIndex = plan.withdrawnIndex == 0
+            ? plan.startTick
+            : plan.withdrawnIndex + 1;
+        uint256 endIndex = withdrawIndex + periods - 1;
+        require(
+            periods > 0 &&
+                endIndex <= plan.endTick &&
+                endIndex <= _nextTickIndex - 1,
+            "Invalid period"
+        );
+        (, received1) = _getPlanAmount(
+            plan.tickAmount0,
+            withdrawIndex,
+            endIndex
+        );
+        plan.withdrawnAmount1 += received1;
+        plan.withdrawnIndex = endIndex;
+        uint256 balance1Before = balance1();
+        TransferHelper.safeTransfer(token1, receiver, received1);
+        require(balance1Before - received1 <= balance1(), "C1");
+        emit Withdraw(planIndex, received1);
+    }
+
+    function unsubscribe(uint256 planIndex, address receiver)
         external
         override
         nonReentrant
         returns (uint256 received0, uint256 received1)
     {
-        address receiver = IAipBurnCallback(planManager).aipBurnCallback(data);
         require(receiver != address(0));
         PlanInfo storage plan = plans[planIndex];
+        require(msg.sender == plan.owner);
         if (plan.endTick >= _nextTickIndex) {
             uint256 oldEndTick = plan.endTick;
             plan.endTick = _nextTickIndex - 1;
             received0 = plan.tickAmount0 * (oldEndTick - plan.endTick);
-
-            mapping(uint256 => uint256) storage tickVolumes0 = _tickVolumes0;
             if (plan.endTick + 1 <= oldEndTick) {
                 for (uint256 i = plan.endTick + 1; i <= oldEndTick; i++) {
-                    tickVolumes0[i] -= plan.tickAmount0;
+                    _tickVolumes0[i] -= plan.tickAmount0;
                 }
             }
         }
@@ -351,15 +367,14 @@ contract AipPool is IAipPool, ReentrancyGuard {
         uint256 tickIndex = _nextTickIndex++;
         amount0 = _tickVolumes0[tickIndex];
         require(amount0 > 0, "Tick volume equal 0");
-        mapping(uint256 => uint256) storage tickTimes = _tickTimes;
         if (tickIndex > 1) {
             require(
-                tickTimes[tickIndex - 1] + TIME_UNIT * frequency <=
+                _tickTimes[tickIndex - 1] + TIME_UNIT * frequency <=
                     block.timestamp + 5,
                 "Not yet"
             );
         }
-        tickTimes[tickIndex] = block.timestamp;
+        _tickTimes[tickIndex] = block.timestamp;
         uint256 gasFee = tx.gasprice * PROCESSING_GAS;
         uint256 _price = IAipSwapManager(swapManager).poolPrice(
             token0,
@@ -425,7 +440,7 @@ contract AipPool is IAipPool, ReentrancyGuard {
         swapWETH9Fee = _swapWETH9Fee;
     }
 
-    function claimReward(uint256 planIndex)
+    function claimReward(uint256 planIndex, address receiver)
         external
         override
         nonReentrant
@@ -436,6 +451,7 @@ contract AipPool is IAipPool, ReentrancyGuard {
         )
     {
         PlanInfo storage plan = plans[planIndex];
+        require(msg.sender == plan.owner);
         token = rewardToken;
         if (token != address(0)) {
             uint256 currentEndTick = _getCurrentEndTick(plan.endTick);
@@ -444,11 +460,9 @@ contract AipPool is IAipPool, ReentrancyGuard {
                 : plan.claimedRewardIndex + 1;
             if (currentEndTick >= currentStartTick) {
                 for (uint256 i = currentStartTick; i <= currentEndTick; i++) {
-                    uint256 rewardAmount = _tickRewards[i];
-                    uint256 paymentAmount0 = _tickVolumes0[i];
                     unclaimedAmount +=
-                        (rewardAmount * plan.tickAmount0) /
-                        paymentAmount0;
+                        (_tickRewards[i] * plan.tickAmount0) /
+                        _tickVolumes0[i];
                 }
             }
 
@@ -460,7 +474,7 @@ contract AipPool is IAipPool, ReentrancyGuard {
                 uint256 balanceRewardBefore = balanceReward();
                 TransferHelper.safeTransfer(
                     rewardToken,
-                    plan.investor,
+                    receiver,
                     unclaimedAmount
                 );
                 require(

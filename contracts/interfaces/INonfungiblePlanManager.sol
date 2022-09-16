@@ -4,6 +4,15 @@ pragma solidity ^0.8.0;
 import "../libraries/PoolAddress.sol";
 
 interface INonfungiblePlanManager {
+    event PlanMinted(
+        uint256 tokenId,
+        address owner,
+        address token0,
+        address token1,
+        uint8 frequency,
+        uint256 planIndex,
+        address investor
+    );
     struct Plan {
         uint96 nonce;
         address operator;
@@ -26,6 +35,13 @@ interface INonfungiblePlanManager {
     }
 
     function factory() external view returns (address);
+
+    function getTokenId(
+        address token0,
+        address token1,
+        uint8 frequency,
+        uint256 planIndex
+    ) external view returns (uint256);
 
     function plansOf(address) external view returns (uint256[] memory);
 
@@ -61,6 +77,10 @@ interface INonfungiblePlanManager {
         returns (uint256 received0, uint256 received1);
 
     function withdraw(uint256 id) external returns (uint256 received1);
+
+    function withdrawIn(uint256 id, uint256 periods)
+        external
+        returns (uint256 received1);
 
     function claimReward(uint256 id)
         external

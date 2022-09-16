@@ -12,7 +12,6 @@ import "./interfaces/INonfungiblePlanManager.sol";
 import "./interfaces/IERC721Access.sol";
 import "./interfaces/callback/IAipSubscribeCallback.sol";
 import "./interfaces/callback/IAipExtendCallback.sol";
-import "./interfaces/callback/IAipBurnCallback.sol";
 import "./libraries/CallbackValidation.sol";
 import "./libraries/PoolAddress.sol";
 import "./libraries/TransferHelper.sol";
@@ -20,11 +19,9 @@ import "./libraries/TransferHelper.sol";
 contract NonfungiblePlanManager is
     Multicall,
     ERC721Permit,
-    IERC721Access,
     INonfungiblePlanManager,
     IAipSubscribeCallback,
-    IAipExtendCallback,
-    IAipBurnCallback
+    IAipExtendCallback
 {
     address public immutable override factory;
     address private immutable _tokenDescriptor;
@@ -45,6 +42,10 @@ contract NonfungiblePlanManager is
 
     modifier isAuthorizedForToken(uint256 tokenId) {
         require(_isApprovedOrOwner(msg.sender, tokenId), "Not approved");
+        _;
+    }
+    modifier isExist(uint256 tokenId) {
+        require(_exists(tokenId), "Invalid token");
         _;
     }
 
@@ -107,22 +108,6 @@ contract NonfungiblePlanManager is
             msg.sender,
             amount
         );
-    }
-
-    struct BurnCallbackData {
-        PoolAddress.PoolInfo poolInfo;
-        uint256 tokenId;
-    }
-
-    function aipBurnCallback(bytes calldata data)
-        external
-        override
-        returns (address receiver)
-    {
-        BurnCallbackData memory decoded = abi.decode(data, (BurnCallbackData));
-        CallbackValidation.verifyCallback(factory, decoded.poolInfo);
-        receiver = ownerOf(decoded.tokenId);
-        _burn(decoded.tokenId);
     }
 
     function plansOf(address addr)
@@ -191,7 +176,7 @@ contract NonfungiblePlanManager is
         });
         IAipPool pool = IAipPool(PoolAddress.computeAddress(factory, poolInfo));
         planIndex = pool.subscribe(
-            params.investor,
+            address(this),
             params.tickAmount,
             params.periods,
             abi.encode(
@@ -214,14 +199,23 @@ contract NonfungiblePlanManager is
             planIndex
         ] = tokenId;
         _investorPlans[msg.sender].push(tokenId);
+        emit PlanMinted(
+            tokenId,
+            params.owner,
+            params.token0,
+            params.token1,
+            params.frequency,
+            planIndex,
+            params.investor
+        );
     }
 
     function extend(uint256 tokenId, uint256 periods)
         external
         payable
         override
+        isExist(tokenId)
     {
-        require(_exists(tokenId), "Invalid token");
         Plan memory plan = _plans[tokenId];
         PoolAddress.PoolInfo memory poolInfo = PoolAddress.PoolInfo({
             token0: plan.token0,
@@ -241,10 +235,10 @@ contract NonfungiblePlanManager is
     function burn(uint256 tokenId)
         external
         override
+        isExist(tokenId)
         isAuthorizedForToken(tokenId)
         returns (uint256 received0, uint256 received1)
     {
-        require(_exists(tokenId), "Invalid token");
         Plan memory plan = _plans[tokenId];
         PoolAddress.PoolInfo memory poolInfo = PoolAddress.PoolInfo({
             token0: plan.token0,
@@ -252,49 +246,66 @@ contract NonfungiblePlanManager is
             frequency: plan.frequency
         });
         IAipPool pool = IAipPool(PoolAddress.computeAddress(factory, poolInfo));
-        return
-            pool.unsubscribe(
-                plan.index,
-                abi.encode(
-                    BurnCallbackData({poolInfo: poolInfo, tokenId: tokenId})
-                )
-            );
+        address receiver = ownerOf(tokenId);
+        _burn(tokenId);
+        return pool.unsubscribe(plan.index, receiver);
     }
 
     function withdraw(uint256 tokenId)
         external
         override
+        isExist(tokenId)
+        isAuthorizedForToken(tokenId)
         returns (uint256 received1)
     {
-        require(_exists(tokenId), "Invalid token");
         Plan memory plan = _plans[tokenId];
+        require(plan.investor == ownerOf(tokenId), "Locked");
         PoolAddress.PoolInfo memory poolInfo = PoolAddress.PoolInfo({
             token0: plan.token0,
             token1: plan.token1,
             frequency: plan.frequency
         });
         IAipPool pool = IAipPool(PoolAddress.computeAddress(factory, poolInfo));
-        return pool.withdraw(plan.index);
+        return pool.withdraw(plan.index, plan.investor);
+    }
+
+    function withdrawIn(uint256 tokenId, uint256 periods)
+        external
+        override
+        isExist(tokenId)
+        isAuthorizedForToken(tokenId)
+        returns (uint256 received1)
+    {
+        Plan memory plan = _plans[tokenId];
+        require(plan.investor == ownerOf(tokenId), "Locked");
+        PoolAddress.PoolInfo memory poolInfo = PoolAddress.PoolInfo({
+            token0: plan.token0,
+            token1: plan.token1,
+            frequency: plan.frequency
+        });
+        IAipPool pool = IAipPool(PoolAddress.computeAddress(factory, poolInfo));
+        return pool.withdrawIn(plan.index, plan.investor, periods);
     }
 
     function claimReward(uint256 tokenId)
         external
         override
+        isExist(tokenId)
         returns (
             address token,
             uint256 unclaimedAmount,
             uint256 claimedAmount
         )
     {
-        require(_exists(tokenId), "Invalid token");
         Plan memory plan = _plans[tokenId];
+        require(plan.investor == msg.sender, "Only investor");
         PoolAddress.PoolInfo memory poolInfo = PoolAddress.PoolInfo({
             token0: plan.token0,
             token1: plan.token1,
             frequency: plan.frequency
         });
         IAipPool pool = IAipPool(PoolAddress.computeAddress(factory, poolInfo));
-        return pool.claimReward(plan.index);
+        return pool.claimReward(plan.index, plan.investor);
     }
 
     function _getAndIncrementNonce(uint256 tokenId)
@@ -322,10 +333,5 @@ contract NonfungiblePlanManager is
     function _approve(address to, uint256 tokenId) internal override(ERC721) {
         _plans[tokenId].operator = to;
         emit Approval(ownerOf(tokenId), to, tokenId);
-    }
-
-    function isLocked(uint256 tokenId) external view override returns (bool) {
-        Plan memory plan = _plans[tokenId];
-        return ownerOf(tokenId) != plan.investor;
     }
 }

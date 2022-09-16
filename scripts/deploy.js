@@ -44,7 +44,6 @@ async function deploy() {
 
   const tx = await factory.enable(
     swapManagerDeployed.address,
-    planManagerDeployed.address,
     dai,
     usdc,
     usdt,

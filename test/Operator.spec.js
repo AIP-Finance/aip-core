@@ -55,7 +55,6 @@ describe("PoolReward", () => {
 
     await factory.enable(
       swapManager.address,
-      planManager.address,
       dai.address,
       usdc.address,
       usdt.address,
@@ -213,12 +212,6 @@ describe("PoolReward", () => {
       await pool.connect(operator).depositReward(rewardAmount);
       const { reward } = await pool.tickInfo(2);
       expect(rewardAmount).to.equal(reward);
-    });
-    it("fails if caller is not operator", async () => {
-      await pool.initReward(tokens[2].address, operator.address);
-      await expect(pool.depositReward(rewardAmount)).to.be.reverted;
-      await expect(pool.connect(other).depositReward(rewardAmount)).to.be
-        .reverted;
     });
     it("fails if caller is not operator", async () => {
       await pool.initReward(tokens[2].address, operator.address);

@@ -8,7 +8,6 @@ interface IAipPoolDeployer {
         returns (
             address factory,
             address swapManager,
-            address planManager,
             address WETH9,
             address token0,
             address token1,
