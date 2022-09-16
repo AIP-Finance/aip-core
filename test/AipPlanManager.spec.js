@@ -662,6 +662,19 @@ describe("NonfungiblePlanManager", () => {
         planManager.connect(investor1).withdraw(1)
       ).to.be.revertedWith("Nothing to withdraw");
     });
+    it("fails if transfered to another account", async () => {
+      await subscribe(investor1, tickAmount, 2);
+      await pool.trigger();
+      await planManager
+        .connect(investor1)
+        .transferFrom(investor1.address, investor2.address, 1);
+      await expect(
+        planManager.connect(investor1).withdraw(1)
+      ).to.be.revertedWith("Not approved");
+      await expect(
+        planManager.connect(investor2).withdraw(1)
+      ).to.be.revertedWith("Locked");
+    });
   });
 
   describe("#withdrawIn", () => {
@@ -769,6 +782,19 @@ describe("NonfungiblePlanManager", () => {
       await expect(
         planManager.connect(investor1).withdrawIn(1, 3)
       ).to.be.revertedWith("Invalid period");
+    });
+    it("fails if transfered to another account", async () => {
+      await subscribe(investor1, tickAmount, 2);
+      await pool.trigger();
+      await planManager
+        .connect(investor1)
+        .transferFrom(investor1.address, investor2.address, 1);
+      await expect(
+        planManager.connect(investor1).withdrawIn(1, 1)
+      ).to.be.revertedWith("Not approved");
+      await expect(
+        planManager.connect(investor2).withdrawIn(1, 1)
+      ).to.be.revertedWith("Locked");
     });
   });
 
@@ -891,6 +917,20 @@ describe("NonfungiblePlanManager", () => {
       const balance = await tokens[2].balanceOf(investor1.address);
       expect(balance.sub(balanceBefore)).to.equal(rewardAmount);
     });
+    it("success if transfered to another account", async () => {
+      await subscribe(investor1, tickAmount, ticks);
+      await pool.trigger();
+      await pool.initReward(tokens[2].address, other.address);
+      await tokens[2].connect(other).approve(pool.address, rewardAmount);
+      await pool.connect(other).depositReward(rewardAmount);
+      await planManager
+        .connect(investor1)
+        .transferFrom(investor1.address, investor2.address, 1);
+      const balanceBefore = await tokens[2].balanceOf(investor1.address);
+      await planManager.connect(investor1).claimReward(1);
+      const balance = await tokens[2].balanceOf(investor1.address);
+      expect(balance.sub(balanceBefore)).to.equal(rewardAmount);
+    });
     it("right ratio", async () => {
       await subscribe(investor1, tickAmount, ticks);
       await subscribe(investor2, tickAmount.mul(2), ticks);
@@ -949,6 +989,19 @@ describe("NonfungiblePlanManager", () => {
       expect(result.token).to.equal(constants.AddressZero);
       expect(result.unclaimedAmount).to.equal(0);
       expect(result.claimedAmount).to.equal(0);
+    });
+    it("fails if caller is not investor", async () => {
+      await subscribe(investor1, tickAmount, ticks);
+      await pool.trigger();
+      await pool.initReward(tokens[2].address, other.address);
+      await tokens[2].connect(other).approve(pool.address, rewardAmount);
+      await pool.connect(other).depositReward(rewardAmount);
+      await planManager
+        .connect(investor1)
+        .transferFrom(investor1.address, investor2.address, 1);
+      await expect(
+        planManager.connect(investor2).claimReward(1)
+      ).to.be.revertedWith("Only investor");
     });
   });
 

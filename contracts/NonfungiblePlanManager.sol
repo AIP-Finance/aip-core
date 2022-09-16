@@ -255,10 +255,10 @@ contract NonfungiblePlanManager is
         external
         override
         isExist(tokenId)
+        isAuthorizedForToken(tokenId)
         returns (uint256 received1)
     {
         Plan memory plan = _plans[tokenId];
-        require(plan.investor == msg.sender, "Only investor");
         require(plan.investor == ownerOf(tokenId), "Locked");
         PoolAddress.PoolInfo memory poolInfo = PoolAddress.PoolInfo({
             token0: plan.token0,
@@ -273,10 +273,10 @@ contract NonfungiblePlanManager is
         external
         override
         isExist(tokenId)
+        isAuthorizedForToken(tokenId)
         returns (uint256 received1)
     {
         Plan memory plan = _plans[tokenId];
-        require(plan.investor == msg.sender, "Only investor");
         require(plan.investor == ownerOf(tokenId), "Locked");
         PoolAddress.PoolInfo memory poolInfo = PoolAddress.PoolInfo({
             token0: plan.token0,

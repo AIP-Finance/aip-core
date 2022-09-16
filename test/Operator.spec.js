@@ -219,12 +219,6 @@ describe("PoolReward", () => {
       await expect(pool.connect(other).depositReward(rewardAmount)).to.be
         .reverted;
     });
-    it("fails if caller is not operator", async () => {
-      await pool.initReward(tokens[2].address, operator.address);
-      await expect(pool.depositReward(rewardAmount)).to.be.reverted;
-      await expect(pool.connect(other).depositReward(rewardAmount)).to.be
-        .reverted;
-    });
 
     it("fails if insufficient token funds", async () => {
       await pool.initReward(tokens[2].address, operator.address);
