@@ -269,6 +269,24 @@ contract NonfungiblePlanManager is
         return pool.withdraw(plan.index, plan.investor);
     }
 
+    function withdrawIn(uint256 tokenId, uint256 periods)
+        external
+        override
+        isExist(tokenId)
+        returns (uint256 received1)
+    {
+        Plan memory plan = _plans[tokenId];
+        require(plan.investor == msg.sender, "Only investor");
+        require(plan.investor == ownerOf(tokenId), "Locked");
+        PoolAddress.PoolInfo memory poolInfo = PoolAddress.PoolInfo({
+            token0: plan.token0,
+            token1: plan.token1,
+            frequency: plan.frequency
+        });
+        IAipPool pool = IAipPool(PoolAddress.computeAddress(factory, poolInfo));
+        return pool.withdrawIn(plan.index, plan.investor, periods);
+    }
+
     function claimReward(uint256 tokenId)
         external
         override

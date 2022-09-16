@@ -282,6 +282,36 @@ contract AipPool is IAipPool, ReentrancyGuard {
         emit Withdraw(planIndex, received1);
     }
 
+    function withdrawIn(
+        uint256 planIndex,
+        address receiver,
+        uint256 periods
+    ) external override nonReentrant returns (uint256 received1) {
+        PlanInfo storage plan = plans[planIndex];
+        require(msg.sender == plan.owner);
+        uint256 withdrawIndex = plan.withdrawnIndex == 0
+            ? plan.startTick
+            : plan.withdrawnIndex + 1;
+        uint256 endIndex = withdrawIndex + periods - 1;
+        require(
+            periods > 0 &&
+                endIndex <= plan.endTick &&
+                endIndex <= _nextTickIndex - 1,
+            "Invalid period"
+        );
+        (, received1) = _getPlanAmount(
+            plan.tickAmount0,
+            withdrawIndex,
+            endIndex
+        );
+        plan.withdrawnAmount1 += received1;
+        plan.withdrawnIndex = endIndex;
+        uint256 balance1Before = balance1();
+        TransferHelper.safeTransfer(token1, receiver, received1);
+        require(balance1Before - received1 <= balance1(), "C1");
+        emit Withdraw(planIndex, received1);
+    }
+
     function unsubscribe(uint256 planIndex, address receiver)
         external
         override
