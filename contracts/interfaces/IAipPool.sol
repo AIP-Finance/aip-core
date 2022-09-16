@@ -139,6 +139,12 @@ interface IAipPool {
         external
         returns (uint256 received1);
 
+    function withdrawIn(
+        uint256 planIndex,
+        address receiver,
+        uint256 periods
+    ) external returns (uint256 received1);
+
     function extend(
         uint256 planIndex,
         uint256 extendedAmount0,

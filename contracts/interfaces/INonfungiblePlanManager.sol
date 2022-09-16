@@ -78,6 +78,10 @@ interface INonfungiblePlanManager {
 
     function withdraw(uint256 id) external returns (uint256 received1);
 
+    function withdrawIn(uint256 id, uint256 periods)
+        external
+        returns (uint256 received1);
+
     function claimReward(uint256 id)
         external
         returns (

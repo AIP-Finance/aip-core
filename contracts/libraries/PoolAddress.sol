@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 library PoolAddress {
     bytes32 internal constant POOL_INIT_CODE_HASH =
-        0x56b4beafd4bbe33017f5dcc060a54060b8cee4ee664bce8cc77cee6505bba26f;
+        0xd60c5b2c23c79bdfcce296dc5e6e2e1761592cd991ba02e5eecd668befc3b2e9;
 
     struct PoolInfo {
         address token0;

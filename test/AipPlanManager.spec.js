@@ -664,6 +664,114 @@ describe("NonfungiblePlanManager", () => {
     });
   });
 
+  describe("#withdrawIn", () => {
+    it("success", async () => {
+      await subscribe(investor1, tickAmount, ticks);
+      const result1 = await swapWithoutProtocolFee(tickAmount);
+      await pool.trigger();
+      await ethers.provider.send("evm_increaseTime", [frequency * TIME_UNIT]);
+      await ethers.provider.send("evm_mine");
+      const result2 = await swapWithoutProtocolFee(tickAmount);
+      await pool.trigger();
+
+      await ethers.provider.send("evm_increaseTime", [frequency * TIME_UNIT]);
+      await ethers.provider.send("evm_mine");
+      await pool.trigger();
+
+      const balance1Before = await tokens[1].balanceOf(investor1.address);
+      await planManager.connect(investor1).withdrawIn(1, 2);
+      const balance1 = await tokens[1].balanceOf(investor1.address);
+      expect(balance1.sub(balance1Before)).to.equal(
+        result1.amount1.abs().add(result2.amount1.abs())
+      );
+    });
+    it("success if withdrawn in the past", async () => {
+      await subscribe(investor1, tickAmount, ticks);
+      await pool.trigger();
+      await planManager.connect(investor1).withdraw(1);
+      await ethers.provider.send("evm_increaseTime", [frequency * TIME_UNIT]);
+      await ethers.provider.send("evm_mine");
+      const result2 = await swapWithoutProtocolFee(tickAmount);
+      await pool.trigger();
+
+      await ethers.provider.send("evm_increaseTime", [frequency * TIME_UNIT]);
+      await ethers.provider.send("evm_mine");
+      const result3 = await swapWithoutProtocolFee(tickAmount);
+      await pool.trigger();
+
+      const balance1Before = await tokens[1].balanceOf(investor1.address);
+      await planManager.connect(investor1).withdrawIn(1, 2);
+      const balance1 = await tokens[1].balanceOf(investor1.address);
+      expect(balance1.sub(balance1Before)).to.equal(
+        result2.amount1.abs().add(result3.amount1.abs())
+      );
+    });
+    it("success if withdraw after withdraw in", async () => {
+      await subscribe(investor1, tickAmount, ticks);
+      await pool.trigger();
+      await ethers.provider.send("evm_increaseTime", [frequency * TIME_UNIT]);
+      await ethers.provider.send("evm_mine");
+      await pool.trigger();
+      await planManager.connect(investor1).withdrawIn(1, 2);
+
+      await ethers.provider.send("evm_increaseTime", [frequency * TIME_UNIT]);
+      await ethers.provider.send("evm_mine");
+      const result3 = await swapWithoutProtocolFee(tickAmount);
+      await pool.trigger();
+
+      const balance1Before = await tokens[1].balanceOf(investor1.address);
+      await planManager.connect(investor1).withdraw(1);
+      const balance1 = await tokens[1].balanceOf(investor1.address);
+      expect(balance1.sub(balance1Before)).to.equal(result3.amount1.abs());
+    });
+    it("success with right ratio", async () => {
+      await subscribe(investor1, tickAmount, ticks);
+      await subscribe(investor2, tickAmount.mul(2), ticks);
+      const result = await swapWithoutProtocolFee(tickAmount.mul(3));
+      await pool.trigger();
+      const balance1Investor1Before = await tokens[1].balanceOf(
+        investor1.address
+      );
+      const balance1Investor2Before = await tokens[1].balanceOf(
+        investor2.address
+      );
+      await planManager.connect(investor1).withdraw(1);
+      await planManager.connect(investor2).withdrawIn(2, 1);
+      const balance1Investor1 = await tokens[1].balanceOf(investor1.address);
+      const balance1Investor2 = await tokens[1].balanceOf(investor2.address);
+      expect(balance1Investor1.sub(balance1Investor1Before)).to.equal(
+        result.amount1.abs().mul(1).div(3)
+      );
+      expect(balance1Investor2.sub(balance1Investor2Before)).to.equal(
+        result.amount1.abs().mul(2).div(3)
+      );
+    });
+    it("emits event", async () => {
+      await subscribe(investor1, tickAmount, ticks);
+      const result = await swapWithoutProtocolFee(tickAmount);
+      await pool.trigger();
+      await expect(planManager.connect(investor1).withdrawIn(1, 1))
+        .to.be.emit(pool, "Withdraw")
+        .withArgs(1, result.amount1.abs());
+    });
+    it("fails if invalid period", async () => {
+      await subscribe(investor1, tickAmount, 2);
+      await pool.trigger();
+      await expect(
+        planManager.connect(investor1).withdrawIn(1, 0)
+      ).to.be.revertedWith("Invalid period");
+      await expect(
+        planManager.connect(investor1).withdrawIn(1, 2)
+      ).to.be.revertedWith("Invalid period");
+      await ethers.provider.send("evm_increaseTime", [frequency * TIME_UNIT]);
+      await ethers.provider.send("evm_mine");
+      await pool.trigger();
+      await expect(
+        planManager.connect(investor1).withdrawIn(1, 3)
+      ).to.be.revertedWith("Invalid period");
+    });
+  });
+
   describe("#extend", () => {
     it("success", async () => {
       await subscribe(investor1, tickAmount, 2);
