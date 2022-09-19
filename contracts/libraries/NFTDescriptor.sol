@@ -36,7 +36,6 @@ library NFTDescriptor {
         string memory name = generateName(
             escapeQuotes(params.stableCoinSymbol),
             escapeQuotes(params.tokenSymbol),
-            params.frequency,
             params.tickAmount,
             params.ticks
         );
@@ -280,7 +279,6 @@ library NFTDescriptor {
     function generateName(
         string memory stableCoinSymbol,
         string memory tokenSymbol,
-        uint8 frequency,
         uint256 tickAmount,
         uint256 ticks
     ) private pure returns (string memory) {
@@ -290,15 +288,9 @@ library NFTDescriptor {
                     "AIP - Invest ",
                     tokenSymbol,
                     " with ",
-                    decimalString(tickAmount, 18, 2, false),
+                    decimalString(tickAmount * ticks, 18, 2, false),
                     " ",
-                    stableCoinSymbol,
-                    " every ",
-                    Strings.toString(frequency),
-                    frequency > 1 ? " days" : " day",
-                    " and ",
-                    Strings.toString(ticks),
-                    ticks > 1 ? " periods" : " period"
+                    stableCoinSymbol
                 )
             );
     }

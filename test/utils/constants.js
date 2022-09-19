@@ -1,4 +1,4 @@
-const TIME_UNIT = 60;
+const TIME_UNIT = 24 * 3600;
 const PROCESSING_GAS = 400000;
 
 module.exports = {

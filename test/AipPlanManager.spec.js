@@ -404,6 +404,7 @@ describe("NonfungiblePlanManager", () => {
       const protocolFeeBefore = await pool.protocolFee();
       await subscribe(investor1, tickAmount, ticks);
       const result = await swapWithoutProtocolFee(tickAmount);
+      console.log("pool.nextTickVolume", await pool.nextTickVolume());
       await pool.trigger();
       console.log(await planManager.tokenURI(1));
       const tickInfo = await pool.tickInfo(1);

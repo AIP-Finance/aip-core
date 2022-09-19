@@ -12,6 +12,8 @@ import "./interfaces/callback/IAipSubscribeCallback.sol";
 import "./interfaces/callback/IAipExtendCallback.sol";
 import "./libraries/TransferHelper.sol";
 
+import "hardhat/console.sol";
+
 contract AipPool is IAipPool, ReentrancyGuard {
     address public immutable override factory;
     address public immutable override swapManager;
@@ -25,7 +27,7 @@ contract AipPool is IAipPool, ReentrancyGuard {
     uint16 public override swapWETH9Fee = 3000;
     uint16 private constant PROTOCOL_FEE = 1000;
     uint16 private constant MAX_TICKS = 365;
-    uint24 private constant TIME_UNIT = 60;
+    uint24 private constant TIME_UNIT = 24 * 3600;
     uint24 private constant PROCESSING_GAS = 400000;
     uint64 private constant MIN_TICK_AMOUNT = 10 * 1e18;
 
@@ -366,6 +368,7 @@ contract AipPool is IAipPool, ReentrancyGuard {
     {
         uint256 tickIndex = _nextTickIndex++;
         amount0 = _tickVolumes0[tickIndex];
+        console.log("tickIndex", tickIndex);
         require(amount0 > 0, "Tick volume equal 0");
         if (tickIndex > 1) {
             require(
@@ -540,7 +543,7 @@ contract AipPool is IAipPool, ReentrancyGuard {
         amount = amountRequested > protocolFee ? protocolFee : amountRequested;
 
         if (amount > 0) {
-            if (amount == protocolFee) amount--; // ensure that the slot is not cleared, for gas savings
+            if (amount == protocolFee) amount--;
             protocolFee -= amount;
             TransferHelper.safeTransfer(token0, recipient, amount);
         }

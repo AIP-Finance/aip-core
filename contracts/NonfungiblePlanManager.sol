@@ -34,7 +34,7 @@ contract NonfungiblePlanManager is
     mapping(address => uint256[]) private _investorPlans;
 
     constructor(address _factory, address _tokenDescriptor_)
-        ERC721Permit("Aip Plan NFT", "AIP-PLAN", "1")
+        ERC721Permit("AIP Investment Certificate Beta", "AIP-IC-Beta", "1")
     {
         factory = _factory;
         _tokenDescriptor = _tokenDescriptor_;

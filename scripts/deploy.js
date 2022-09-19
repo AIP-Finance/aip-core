@@ -58,7 +58,8 @@ async function deploy() {
   //   wallet2
   // );
   console.log("\n");
-  const tokens = [ti1, "0xef68cEE62bc85650Ee96dbBaC7653B1BA103ADc6"];
+  const tokens = [ti1];
+  // const tokens = [ti1, "0xef68cEE62bc85650Ee96dbBaC7653B1BA103ADc6"];
   const frequencies = [1, 7, 14, 30];
   for (let i = 0; i < tokens.length; i++) {
     for (let j = 0; j < frequencies.length; j++) {

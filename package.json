@@ -4,6 +4,7 @@
     "pool": "npx hardhat run scripts/loadPoolBytecode.js",
     "deploy:rinkeby": "npm run pool && npm run test && npx hardhat run --network rinkeby scripts/deploy.js",
     "deploy:ropsten": "npm run pool && npm run test && npx hardhat run --network ropsten scripts/deploy.js",
+    "deploy:mainnet": "npm run pool && npm run test && npx hardhat run --network mainnet scripts/deploy.js",
     "compile": "hardhat compile",
     "test": "hardhat test",
     "watch": "hardhat watch"
