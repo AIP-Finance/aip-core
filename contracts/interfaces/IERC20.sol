@@ -86,4 +86,13 @@ interface IERC20 {
         address to,
         uint256 amount
     ) external returns (bool);
+
+    /// @return The name of the token
+    function name() external view returns (string memory);
+
+    /// @return The symbol of the token
+    function symbol() external view returns (string memory);
+
+    /// @return The number of decimal places the token has
+    function decimals() external view returns (uint8);
 }

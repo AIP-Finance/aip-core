@@ -7,7 +7,11 @@ contract TestUSDT is ERC20 {
     uint256 mintedAmount;
     mapping(address => bool) mintedAddresses;
 
-    constructor(uint256 amountToMint) ERC20("TestUSDT", "testUSDT") {
+    function decimals() public view override returns (uint8) {
+        return 6;
+    }
+
+    constructor(uint256 amountToMint) ERC20("Tether USD", "testUSDT") {
         _mint(msg.sender, amountToMint);
     }
 

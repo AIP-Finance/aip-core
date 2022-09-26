@@ -44,18 +44,25 @@ contract UniswapManager is IAipSwapManager, AipPayments {
         return size > 0;
     }
 
-    function _calculatePrice(uint160 _sqrtPriceX96)
-        internal
-        pure
-        returns (uint256)
-    {
+    function _calculatePrice(
+        uint160 _sqrtPriceX96,
+        address token0,
+        address token1
+    ) internal view returns (uint256 price) {
         if (_sqrtPriceX96 > _MAX_CALC_SQRT_PRICE) {
-            return
-                (uint256(_sqrtPriceX96).mul(uint256(_sqrtPriceX96)) >> (96 * 2))
-                    .mul(1e18);
+            price = (uint256(_sqrtPriceX96).mul(uint256(_sqrtPriceX96)) >>
+                (96 * 2)).mul(1e18);
+        } else {
+            price = (uint256(_sqrtPriceX96).mul(uint256(_sqrtPriceX96)).mul(
+                1e18
+            ) >> (96 * 2));
         }
-        return (uint256(_sqrtPriceX96).mul(uint256(_sqrtPriceX96)).mul(1e18) >>
-            (96 * 2));
+        if (token0 > token1 && price > 0) {
+            price = (1e18 * 1e18) / price;
+        }
+        price =
+            (price * 10**IERC20(token0).decimals()) /
+            10**IERC20(token1).decimals();
     }
 
     function bestLiquidityPool(address token0, address token1)
@@ -79,12 +86,9 @@ contract UniswapManager is IAipSwapManager, AipPayments {
                     L = _L;
                     pool = poolAddress;
                     (uint160 _sqrtPriceX96, , , , , , ) = _pool.slot0();
-                    price = _calculatePrice(_sqrtPriceX96);
+                    price = _calculatePrice(_sqrtPriceX96, token0, token1);
                 }
             }
-        }
-        if (token0 > token1 && price > 0) {
-            price = (1e18 * 1e18) / price;
         }
     }
 
@@ -108,10 +112,7 @@ contract UniswapManager is IAipSwapManager, AipPayments {
         address poolAddress = getPool(token0, token1, fee);
         IUniswapV3Pool _pool = IUniswapV3Pool(poolAddress);
         (uint160 _sqrtPriceX96, , , , , , ) = _pool.slot0();
-        price = _calculatePrice(_sqrtPriceX96);
-        if (token0 > token1 && price > 0) {
-            price = (1e18 * 1e18) / price;
-        }
+        price = _calculatePrice(_sqrtPriceX96, token0, token1);
     }
 
     function swap(

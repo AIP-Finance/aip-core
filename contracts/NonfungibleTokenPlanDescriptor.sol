@@ -45,6 +45,8 @@ contract NonfungibleTokenPlanDescriptor is INonfungibleTokenPlanDescriptor {
                     tokenSymbol: tokenAddress == WETH9
                         ? "ETH"
                         : SafeERC20Namer.tokenSymbol(tokenAddress),
+                    stableCoinDecimals: IERC20Metadata(stableCoinAddress)
+                        .decimals(),
                     tokenDecimals: IERC20Metadata(tokenAddress).decimals(),
                     frequency: plan.frequency,
                     poolAddress: pool,

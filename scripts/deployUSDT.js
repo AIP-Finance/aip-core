@@ -7,7 +7,7 @@ async function deploy() {
   const [wallet] = await ethers.getSigners();
 
   const testUSDTFactory = await ethers.getContractFactory("TestUSDT");
-  const initialSupply = ethers.utils.parseEther("32000000000");
+  const initialSupply = ethers.utils.parseUnits("32000000000", 6);
   const testUSDT = await testUSDTFactory.deploy(initialSupply);
   const testUSDTDeployed = await testUSDT.deployed();
   console.log("testUSDTAddress:", testUSDTDeployed.address);

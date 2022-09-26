@@ -23,6 +23,10 @@ contract MockLiquidityManager is AipPayments {
         bytes calldata data
     ) external {
         MintCallbackData memory decoded = abi.decode(data, (MintCallbackData));
+        // console.log("token0", decoded.poolKey.token0);
+        // console.log("amount0Owed", amount0Owed);
+        // console.log("token1", decoded.poolKey.token1);
+        // console.log("amount1Owed", amount1Owed);
         if (amount0Owed > 0)
             pay(decoded.poolKey.token0, decoded.payer, msg.sender, amount0Owed);
         if (amount1Owed > 0)
@@ -83,13 +87,13 @@ contract MockLiquidityManager is AipPayments {
             UniswapPoolAddress.computeAddress(factory, poolKey)
         );
 
-        liquidity = params.liquidity * 1e18;
+        liquidity = params.liquidity;
 
         (amount0, amount1) = pool.mint(
             params.recipient,
             params.tickLower,
             params.tickUpper,
-            params.liquidity * 1e18,
+            params.liquidity,
             abi.encode(MintCallbackData({poolKey: poolKey, payer: msg.sender}))
         );
     }

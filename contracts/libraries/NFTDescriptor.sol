@@ -17,6 +17,7 @@ library NFTDescriptor {
         address tokenAddress;
         string stableCoinSymbol;
         string tokenSymbol;
+        uint8 stableCoinDecimals;
         uint8 tokenDecimals;
         uint8 frequency;
         address poolAddress;
@@ -36,6 +37,7 @@ library NFTDescriptor {
         string memory name = generateName(
             escapeQuotes(params.stableCoinSymbol),
             escapeQuotes(params.tokenSymbol),
+            params.stableCoinDecimals,
             params.tickAmount,
             params.ticks
         );
@@ -279,6 +281,7 @@ library NFTDescriptor {
     function generateName(
         string memory stableCoinSymbol,
         string memory tokenSymbol,
+        uint8 stableCoinDecimals,
         uint256 tickAmount,
         uint256 ticks
     ) private pure returns (string memory) {
@@ -288,7 +291,12 @@ library NFTDescriptor {
                     "AIP - Invest ",
                     tokenSymbol,
                     " with ",
-                    decimalString(tickAmount * ticks, 18, 2, false),
+                    decimalString(
+                        tickAmount * ticks,
+                        stableCoinDecimals,
+                        2,
+                        false
+                    ),
                     " ",
                     stableCoinSymbol
                 )
@@ -328,7 +336,12 @@ library NFTDescriptor {
                     " - Ongoing: ",
                     params.ongoing == 0
                         ? "0"
-                        : decimalString(params.ongoing, 18, 2, false),
+                        : decimalString(
+                            params.ongoing,
+                            params.stableCoinDecimals,
+                            2,
+                            false
+                        ),
                     " ",
                     escapeQuotes(params.stableCoinSymbol),
                     unicode"\\n\\n⚠️ DISCLAIMER: Due diligence is imperative when assessing this NFT. Make sure token addresses match the expected tokens, as token symbols may be imitated."
@@ -361,10 +374,20 @@ library NFTDescriptor {
             ),
             color1: tokenToColorHex(uint256(uint160(params.tokenAddress)), 136),
             frequency: Strings.toString(params.frequency),
-            tickAmount: decimalString(params.tickAmount, 18, 2, false),
+            tickAmount: decimalString(
+                params.tickAmount,
+                params.stableCoinDecimals,
+                2,
+                false
+            ),
             ongoing: params.ongoing == 0
                 ? "0"
-                : decimalString(params.ongoing, 18, 2, false),
+                : decimalString(
+                    params.ongoing,
+                    params.stableCoinDecimals,
+                    2,
+                    false
+                ),
             invested: params.invested == 0
                 ? "0"
                 : decimalString(
