@@ -27,14 +27,17 @@ async function completeFixture([wallet], provider) {
   const { weth9 } = await wethFixture([wallet]);
   const swapFactory = await v3CoreFactoryFixture([wallet]);
   const tokenFactory = await ethers.getContractFactory("TestERC20");
+  const daiFactory = await ethers.getContractFactory("TestDAI");
+  const usdtFactory = await ethers.getContractFactory("TestUSDT");
+  const usdcFactory = await ethers.getContractFactory("TestUSDC");
   const tokens = [
     await tokenFactory.deploy(constants.MaxUint256.div(2)),
     await tokenFactory.deploy(constants.MaxUint256.div(2)),
     await tokenFactory.deploy(constants.MaxUint256.div(2)),
   ];
-  const dai = await tokenFactory.deploy(constants.MaxUint256.div(2));
-  const usdc = await tokenFactory.deploy(constants.MaxUint256.div(2));
-  const usdt = await tokenFactory.deploy(constants.MaxUint256.div(2));
+  const dai = await daiFactory.deploy(constants.MaxUint256.div(2));
+  const usdc = await usdcFactory.deploy(constants.MaxUint256.div(2));
+  const usdt = await usdtFactory.deploy(constants.MaxUint256.div(2));
   // if (usdt.address < tokens[1].address) {
   //   const tmp = usdt;
   //   usdt = tokens[1];

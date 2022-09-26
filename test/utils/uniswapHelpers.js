@@ -19,10 +19,10 @@ const TICK_SPACINGS = {
   [FeeAmount.HIGH]: 200,
 };
 
-const TICK_PRICES = {
-  [FeeAmount.LOW]: 1,
-  [FeeAmount.MEDIUM]: 2,
-  [FeeAmount.HIGH]: 3,
+const RESERVES = {
+  [FeeAmount.LOW]: [utils.parseUnits("1400", 6), utils.parseEther("1")],
+  [FeeAmount.MEDIUM]: [utils.parseUnits("1300", 6), utils.parseEther("1")],
+  [FeeAmount.HIGH]: [utils.parseUnits("1200", 6), utils.parseEther("1")],
 };
 
 function encodePriceSqrt(reserve1, reserve0) {
@@ -83,7 +83,8 @@ const generateUniswapPool = async (
   token0,
   token1,
   fee,
-  wallet
+  wallet,
+  isETH
 ) => {
   await token0.approve(mockLiquidityManager.address, constants.MaxUint256);
   await token1.approve(mockLiquidityManager.address, constants.MaxUint256);
@@ -92,7 +93,9 @@ const generateUniswapPool = async (
     token0.address,
     token1.address,
     fee,
-    encodePriceSqrt(TICK_PRICES[fee], 1)
+    token0.address.toLowerCase() < token1.address.toLowerCase()
+      ? encodePriceSqrt(RESERVES[fee][1], RESERVES[fee][0])
+      : encodePriceSqrt(RESERVES[fee][0], RESERVES[fee][1])
   );
   // utils.defaultAbiCoder.decode(["address"], tx.data).map(console.log);
   const pool = await new ethers.Contract(
@@ -116,11 +119,13 @@ const generateUniswapPool = async (
       tickUpper: getMaxTick(TICK_SPACINGS[fee]),
       fee: fee,
       recipient: wallet.address,
-      liquidity: 100,
+      liquidity: isETH
+        ? utils.parseUnits("1", 16)
+        : utils.parseEther("1").mul(100),
       // liquidity: parseEther("2"),
     },
     {
-      value: utils.parseEther((TICK_PRICES[fee] * 100).toString()),
+      value: isETH ? utils.parseEther("1000") : 0,
     }
   );
   return pool;
@@ -134,6 +139,7 @@ module.exports = {
   // encodeLiquidity,
   generateUniswapPool,
   FeeAmount,
+  RESERVES,
   // TICK_SPACINGS,
   // TICK_PRICES,
   // MIN_SQRT_RATIO,

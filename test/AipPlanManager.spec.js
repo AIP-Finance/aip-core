@@ -7,7 +7,11 @@ const {
 
 const { expect } = require("./utils/expect");
 const { getCreate2Address } = require("./utils/helpers");
-const { generateUniswapPool, FeeAmount } = require("./utils/uniswapHelpers");
+const {
+  generateUniswapPool,
+  FeeAmount,
+  RESERVES,
+} = require("./utils/uniswapHelpers");
 const { completeFixture } = require("./utils/fixtures");
 const { TIME_UNIT, PROCESSING_GAS } = require("./utils/constants");
 const getPermitNFTSignature = require("./utils/getPermitNFTSignature");
@@ -28,7 +32,8 @@ const PROTOCOL_FEE = 1000; // 1/x
 const frequency = 30;
 const tickAmount0 = 10;
 const ticks = 100;
-const tickAmount = utils.parseEther(tickAmount0.toString());
+const usdtDecimals = 6;
+const tickAmount = utils.parseUnits(tickAmount0.toString(), usdtDecimals);
 
 const subscribe = (investor, tickAmount, periods) =>
   planManager
@@ -54,7 +59,7 @@ const getTriggerFee = async () => {
     weth9.address,
     FeeAmount.MEDIUM
   );
-  return gasFee.mul(utils.parseEther("1")).div(price);
+  return gasFee.mul(utils.parseUnits("1", usdtDecimals)).div(price);
 };
 
 const swapWithoutProtocolFee = async (amount) => {
@@ -105,9 +110,18 @@ describe("NonfungiblePlanManager", () => {
     usdt
       .connect(other)
       .approve(mockLiquidityManager.address, constants.MaxUint256);
-    await usdt.transfer(investor1.address, utils.parseEther("1000000"));
-    await usdt.transfer(investor2.address, utils.parseEther("1000000"));
-    await usdt.transfer(other.address, utils.parseEther("1000000"));
+    await usdt.transfer(
+      investor1.address,
+      utils.parseUnits("10000000", usdtDecimals)
+    );
+    await usdt.transfer(
+      investor2.address,
+      utils.parseUnits("10000000", usdtDecimals)
+    );
+    await usdt.transfer(
+      other.address,
+      utils.parseUnits("10000000", usdtDecimals)
+    );
 
     // approve & fund wallets
     for (const token of tokens) {
@@ -128,13 +142,16 @@ describe("NonfungiblePlanManager", () => {
       await token.transfer(other.address, utils.parseEther("1000000"));
     }
 
+    console.log("weth9.address", weth9.address);
+
     await generateUniswapPool(
       mockLiquidityManager,
       swapFactory,
       usdt,
       weth9,
       FeeAmount.MEDIUM,
-      wallet
+      wallet,
+      true
     );
 
     await generateUniswapPool(
@@ -143,7 +160,27 @@ describe("NonfungiblePlanManager", () => {
       usdt,
       tokens[1],
       FeeAmount.MEDIUM,
-      wallet
+      wallet,
+      false
+    );
+
+    console.log(
+      (
+        await swapManager.poolPrice(
+          usdt.address,
+          weth9.address,
+          FeeAmount.MEDIUM
+        )
+      ).toString()
+    );
+    console.log(
+      (
+        await swapManager.poolPrice(
+          usdt.address,
+          tokens[1].address,
+          FeeAmount.MEDIUM
+        )
+      ).toString()
     );
 
     return {
@@ -216,7 +253,8 @@ describe("NonfungiblePlanManager", () => {
         usdt,
         weth9,
         FeeAmount.LOW,
-        wallet
+        wallet,
+        true
       );
       await generateUniswapPool(
         mockLiquidityManager,
@@ -224,7 +262,8 @@ describe("NonfungiblePlanManager", () => {
         usdt,
         tokens[1],
         FeeAmount.HIGH,
-        wallet
+        wallet,
+        false
       );
       await pool.setSwapFee(FeeAmount.HIGH, FeeAmount.LOW);
       expect((await pool.swapFee()).toString()).equal(
@@ -241,7 +280,8 @@ describe("NonfungiblePlanManager", () => {
         usdt,
         weth9,
         FeeAmount.LOW,
-        wallet
+        wallet,
+        true
       );
       await generateUniswapPool(
         mockLiquidityManager,
@@ -249,7 +289,8 @@ describe("NonfungiblePlanManager", () => {
         usdt,
         tokens[1],
         FeeAmount.LOW,
-        wallet
+        wallet,
+        false
       );
       await expect(
         pool.connect(investor1).setSwapFee(FeeAmount.LOW, FeeAmount.LOW)
@@ -268,9 +309,13 @@ describe("NonfungiblePlanManager", () => {
   describe("#poolPrice", () => {
     it("equal uniswap pool", async () => {
       const price = await pool.price();
+      const estPrice =
+        Number(utils.formatEther(RESERVES[FeeAmount.MEDIUM][1])) /
+        Number(utils.formatUnits(RESERVES[FeeAmount.MEDIUM][0], usdtDecimals));
 
+      console.log("estPrice.toString()", estPrice.toString());
       expect(Number(utils.formatEther(price))).to.be.approximately(
-        2,
+        estPrice,
         0.00000001
       );
     });
@@ -282,7 +327,8 @@ describe("NonfungiblePlanManager", () => {
         usdt,
         weth9,
         FeeAmount.LOW,
-        wallet
+        wallet,
+        true
       );
 
       await generateUniswapPool(
@@ -291,15 +337,19 @@ describe("NonfungiblePlanManager", () => {
         usdt,
         tokens[1],
         FeeAmount.LOW,
-        wallet
+        wallet,
+        false
       );
 
       await pool.setSwapFee(FeeAmount.LOW, FeeAmount.LOW);
 
       const price = await pool.price();
+      const estPrice =
+        Number(utils.formatEther(RESERVES[FeeAmount.LOW][1])) /
+        Number(utils.formatUnits(RESERVES[FeeAmount.LOW][0], usdtDecimals));
 
       expect(Number(utils.formatEther(price))).to.be.approximately(
-        1,
+        estPrice,
         0.00000001
       );
     });
@@ -392,7 +442,7 @@ describe("NonfungiblePlanManager", () => {
       );
     });
     it("fails if invalid input amount", async () => {
-      const minAmount = utils.parseEther("10");
+      const minAmount = utils.parseUnits("10", usdtDecimals);
       await expect(
         subscribe(investor1, minAmount.sub(1), ticks)
       ).to.be.revertedWith("Invalid tick amount");
@@ -404,7 +454,6 @@ describe("NonfungiblePlanManager", () => {
       const protocolFeeBefore = await pool.protocolFee();
       await subscribe(investor1, tickAmount, ticks);
       const result = await swapWithoutProtocolFee(tickAmount);
-      console.log("pool.nextTickVolume", await pool.nextTickVolume());
       await pool.trigger();
       console.log(await planManager.tokenURI(1));
       const tickInfo = await pool.tickInfo(1);

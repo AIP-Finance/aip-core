@@ -8,6 +8,7 @@ const {
   bytecode: poolBytecode,
 } = require("../artifacts/contracts/AipPool.sol/AipPool.json");
 const { getCreate2Address } = require("../test/utils/helpers");
+const { FeeAmount } = require("../test/utils/uniswapHelpers");
 async function main() {
   const [wallet, wallet2] = await ethers.getSigners();
   // const usdt = new ethers.Contract(
@@ -33,16 +34,18 @@ async function main() {
 
   // console.log("poolAddress", poolAddress);
 
-  const pool = new ethers.Contract(
-    "0xa7532865C67e6C3354DB0809926F55dE23FE1224",
-    poolAbi,
-    wallet2
-  );
-  const data = await pool.callStatic.trigger({ gasLimit: 400000 });
-  console.log(data);
+  const pools = [
+    "0x89E6E6bc6de6015c2930e0C2d5Ab3A3DEc8643F7",
+    "0xFBd5bC31aAA39e379662E5B90b317191DEFb530c",
+    "0xd5617c303F004C15d31be0b80e36723f81d63A9E",
+    "0xA31555652d7C6c502f37781AD29C9BdA4B4062c4",
+  ];
 
-  const tx = await pool.trigger({ gasLimit: 400000 });
-  console.log(tx);
+  for (let i = 0; i < pools.length; i++) {
+    const pool = new ethers.Contract(pools[i], poolAbi, wallet);
+    const tx = await pool.setSwapFee(FeeAmount.LOW, FeeAmount.LOW);
+    console.log(tx);
+  }
 }
 
 main()

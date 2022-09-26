@@ -81,7 +81,8 @@ describe("PoolReward", () => {
       usdt,
       weth9,
       FeeAmount.MEDIUM,
-      wallet
+      wallet,
+      true
     );
 
     await generateUniswapPool(
@@ -90,7 +91,8 @@ describe("PoolReward", () => {
       usdt,
       tokens[1],
       FeeAmount.MEDIUM,
-      wallet
+      wallet,
+      false
     );
 
     return {

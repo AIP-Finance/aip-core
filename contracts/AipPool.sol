@@ -12,7 +12,7 @@ import "./interfaces/callback/IAipSubscribeCallback.sol";
 import "./interfaces/callback/IAipExtendCallback.sol";
 import "./libraries/TransferHelper.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 contract AipPool is IAipPool, ReentrancyGuard {
     address public immutable override factory;
@@ -29,7 +29,7 @@ contract AipPool is IAipPool, ReentrancyGuard {
     uint16 private constant MAX_TICKS = 365;
     uint24 private constant TIME_UNIT = 24 * 3600;
     uint24 private constant PROCESSING_GAS = 400000;
-    uint64 private constant MIN_TICK_AMOUNT = 10 * 1e18;
+    uint8 private constant MIN_TICK_AMOUNT = 10;
 
     uint256 private _nextPlanIndex = 1;
     uint256 private _nextTickIndex = 1;
@@ -197,7 +197,10 @@ contract AipPool is IAipPool, ReentrancyGuard {
         uint256 ticks,
         bytes calldata data
     ) external override nonReentrant returns (uint256 planIndex) {
-        require(tickAmount0 >= MIN_TICK_AMOUNT, "Invalid tick amount");
+        require(
+            tickAmount0 >= MIN_TICK_AMOUNT * 10**IERC20(token0).decimals(),
+            "Invalid tick amount"
+        );
         require(ticks > 0 && ticks <= MAX_TICKS, "Invalid periods");
         planIndex = _nextPlanIndex++;
         PlanInfo memory plan = PlanInfo({
@@ -368,7 +371,6 @@ contract AipPool is IAipPool, ReentrancyGuard {
     {
         uint256 tickIndex = _nextTickIndex++;
         amount0 = _tickVolumes0[tickIndex];
-        console.log("tickIndex", tickIndex);
         require(amount0 > 0, "Tick volume equal 0");
         if (tickIndex > 1) {
             require(
@@ -384,7 +386,8 @@ contract AipPool is IAipPool, ReentrancyGuard {
             WETH9,
             swapWETH9Fee
         );
-        uint256 triggerFee0 = (gasFee * 1e18) / _price;
+
+        uint256 triggerFee0 = (gasFee * 10**IERC20(token0).decimals()) / _price;
         uint256 protocolFee0 = amount0 / PROTOCOL_FEE;
 
         uint256 totalSwap = amount0 - protocolFee0 - triggerFee0;
